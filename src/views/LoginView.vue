@@ -17,7 +17,7 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await api.adminLogin({ email: email.value, password: password.value })
-    auth.setToken(res.data.accessToken)
+    auth.setTokens(res.data.accessToken, res.data.refreshToken)
     router.push({ name: 'dashboard' })
   } catch (e: any) {
     errorMsg.value = e.response?.data?.message ?? '로그인에 실패했습니다.'

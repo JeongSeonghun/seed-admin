@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/network'
 
+
 interface DashboardData {
   totalUsers: number
   server: {
@@ -33,7 +34,8 @@ onMounted(async () => {
   }
 })
 
-function logout() {
+async function logout() {
+  try { await api.adminLogout() } catch { /* 토큰 만료여도 로컬 정리 진행 */ }
   auth.logout()
   router.push({ name: 'login' })
 }
