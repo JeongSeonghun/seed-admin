@@ -96,17 +96,26 @@ export default {
   getDashboard() {
     return http.get('/admin/dashboard')
   },
-  getUsers() {
-    return http.get('/admin/users')
+  getServices() {
+    return http.get('/admin/users/services')
+  },
+  getUsers(filter?: 'admin' | 'user') {
+    return http.get('/admin/users', { params: filter ? { filter } : undefined })
   },
   getUser(id: number) {
     return http.get(`/admin/users/${id}`)
   },
-  createUser(body: { email: string; password: string; name?: string; phone?: string; roles?: string[] }) {
+  createUser(body: { email: string; password: string; name?: string; phone?: string; roles?: string[]; serviceIds?: number[] }) {
     return http.post('/admin/users', body)
   },
   updateUser(id: number, body: { name?: string; phone?: string; password?: string }) {
     return http.patch(`/admin/users/${id}`, body)
+  },
+  updateUserRoles(id: number, roles: string[]) {
+    return http.put(`/admin/users/${id}/roles`, { roles })
+  },
+  updateServiceAccess(userId: number, serviceId: number, status: 'PENDING' | 'APPROVED' | 'REJECTED') {
+    return http.patch(`/admin/users/${userId}/services/${serviceId}`, { status })
   },
   deleteUser(id: number) {
     return http.delete(`/admin/users/${id}`)

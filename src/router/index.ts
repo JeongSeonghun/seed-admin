@@ -5,19 +5,35 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      redirect: '/dashboard',
-    },
-    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/views/DashboardView.vue'),
+      path: '/',
+      component: () => import('@/layouts/AdminLayout.vue'),
       meta: { requiresAuth: true },
+      redirect: '/dashboard',
+      children: [
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/views/DashboardView.vue'),
+          meta: { requiresAuth: true, title: '대시보드' },
+        },
+        {
+          path: 'managers',
+          name: 'managers',
+          component: () => import('@/views/ManagersView.vue'),
+          meta: { requiresAuth: true, title: '관리자 관리' },
+        },
+        {
+          path: 'users',
+          name: 'users',
+          component: () => import('@/views/UsersView.vue'),
+          meta: { requiresAuth: true, title: '사용자 관리' },
+        },
+      ],
     },
     {
       path: '/:pathMatch(.*)*',
@@ -28,13 +44,8 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-
-  if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    return { name: 'login' }
-  }
-  if (to.name === 'login' && auth.isLoggedIn) {
-    return { name: 'dashboard' }
-  }
+  if (to.meta.requiresAuth && !auth.isLoggedIn) return { name: 'login' }
+  if (to.name === 'login' && auth.isLoggedIn) return { name: 'dashboard' }
 })
 
 export default router
