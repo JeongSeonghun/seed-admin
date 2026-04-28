@@ -33,6 +33,12 @@ const router = createRouter({
           component: () => import('@/views/UsersView.vue'),
           meta: { requiresAuth: true, title: '사용자 관리' },
         },
+        {
+          path: 'my',
+          name: 'my',
+          component: () => import('@/views/MyPageView.vue'),
+          meta: { requiresAuth: true, title: '내 정보' },
+        },
       ],
     },
     {

@@ -22,6 +22,8 @@ async function logout() {
         <router-link :to="{ name: 'dashboard' }" class="nav-item">대시보드</router-link>
         <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
         <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
+        <div class="nav-divider" />
+        <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
     </aside>
 
@@ -76,6 +78,11 @@ nav {
 .nav-item.router-link-active {
   background: rgba(74, 108, 247, 0.2);
   color: white;
+}
+.nav-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 0.5rem 0;
 }
 .main {
   flex: 1;

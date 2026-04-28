@@ -93,6 +93,15 @@ export default {
   adminLogout() {
     return http.post('/admin/auth/logout')
   },
+  getMe() {
+    return http.get('/admin/auth/me')
+  },
+  updateMe(body: { name?: string; phone?: string }) {
+    return http.patch('/admin/auth/me', body)
+  },
+  changeMyPassword(currentPassword: string, newPassword: string) {
+    return http.patch('/admin/auth/me/password', { currentPassword, newPassword })
+  },
   getDashboard() {
     return http.get('/admin/dashboard')
   },
