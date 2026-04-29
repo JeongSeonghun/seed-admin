@@ -23,6 +23,9 @@ async function logout() {
         <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
         <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
         <div class="nav-divider" />
+        <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
+        <router-link :to="{ name: 'monitor' }" class="nav-item">서버 모니터링</router-link>
+        <div class="nav-divider" />
         <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
     </aside>

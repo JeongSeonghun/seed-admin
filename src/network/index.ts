@@ -129,4 +129,32 @@ export default {
   deleteUser(id: number) {
     return http.delete(`/admin/users/${id}`)
   },
+
+  // 공지사항
+  getNotices() {
+    return http.get('/admin/notices')
+  },
+  createNotice(body: { title: string; content: string; isPublished?: boolean }) {
+    return http.post('/admin/notices', body)
+  },
+  updateNotice(id: number, body: { title?: string; content?: string; isPublished?: boolean }) {
+    return http.patch(`/admin/notices/${id}`, body)
+  },
+  deleteNotice(id: number) {
+    return http.delete(`/admin/notices/${id}`)
+  },
+
+  // 서버 모니터링
+  getMonitorStatus() {
+    return http.get('/admin/monitor')
+  },
+  createMonitorServer(body: { name: string; url: string; description?: string }) {
+    return http.post('/admin/monitor/servers', body)
+  },
+  updateMonitorServer(id: number, body: { name?: string; url?: string; description?: string }) {
+    return http.patch(`/admin/monitor/servers/${id}`, body)
+  },
+  deleteMonitorServer(id: number) {
+    return http.delete(`/admin/monitor/servers/${id}`)
+  },
 }
