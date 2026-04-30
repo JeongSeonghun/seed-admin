@@ -157,4 +157,75 @@ export default {
   deleteMonitorServer(id: number) {
     return http.delete(`/admin/monitor/servers/${id}`)
   },
+
+  // 게임 - 단어
+  getGameWords(level?: number) {
+    return http.get('/admin/game/words', { params: level ? { level } : undefined })
+  },
+  createGameWord(body: object) {
+    return http.post('/admin/game/words', body)
+  },
+  updateGameWord(id: number, body: object) {
+    return http.patch(`/admin/game/words/${id}`, body)
+  },
+  deleteGameWord(id: number) {
+    return http.delete(`/admin/game/words/${id}`)
+  },
+
+  // 게임 - 스테이지
+  getGameStages() {
+    return http.get('/admin/game/stages')
+  },
+  createGameStage(body: object) {
+    return http.post('/admin/game/stages', body)
+  },
+  updateGameStage(id: number, body: object) {
+    return http.patch(`/admin/game/stages/${id}`, body)
+  },
+  deleteGameStage(id: number) {
+    return http.delete(`/admin/game/stages/${id}`)
+  },
+
+  // 게임 - 패키지
+  getGamePackages() {
+    return http.get('/admin/game/packages')
+  },
+  createGamePackage(body: object) {
+    return http.post('/admin/game/packages', body)
+  },
+  updateGamePackage(id: number, body: object) {
+    return http.patch(`/admin/game/packages/${id}`, body)
+  },
+  deleteGamePackage(id: number) {
+    return http.delete(`/admin/game/packages/${id}`)
+  },
+  addPackageImage(packageId: number, body: { imageUrl: string; sortOrder: number }) {
+    return http.post(`/admin/game/packages/${packageId}/images`, body)
+  },
+  removePackageImage(packageId: number, imageId: number) {
+    return http.delete(`/admin/game/packages/${packageId}/images/${imageId}`)
+  },
+
+  // 게임 - 캐릭터 이미지
+  getGameMyImages() {
+    return http.get('/admin/game/my-images')
+  },
+  createGameMyImage(body: object) {
+    return http.post('/admin/game/my-images', body)
+  },
+  updateGameMyImage(id: number, body: object) {
+    return http.patch(`/admin/game/my-images/${id}`, body)
+  },
+  deleteGameMyImage(id: number) {
+    return http.delete(`/admin/game/my-images/${id}`)
+  },
+
+  // 이미지 업로드
+  uploadImage(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    return http.post<{ url: string }>('/admin/upload/image', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }

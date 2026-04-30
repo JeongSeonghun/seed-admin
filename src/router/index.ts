@@ -51,6 +51,30 @@ const router = createRouter({
           component: () => import('@/views/MyPageView.vue'),
           meta: { requiresAuth: true, title: '내 정보' },
         },
+        {
+          path: 'game/words',
+          name: 'game-words',
+          component: () => import('@/views/game/WordsView.vue'),
+          meta: { requiresAuth: true, title: '단어 관리' },
+        },
+        {
+          path: 'game/stages',
+          name: 'game-stages',
+          component: () => import('@/views/game/StagesView.vue'),
+          meta: { requiresAuth: true, title: '스테이지 관리' },
+        },
+        {
+          path: 'game/packages',
+          name: 'game-packages',
+          component: () => import('@/views/game/PackagesView.vue'),
+          meta: { requiresAuth: true, title: '패키지 관리' },
+        },
+        {
+          path: 'game/my-images',
+          name: 'game-my-images',
+          component: () => import('@/views/game/MyImagesView.vue'),
+          meta: { requiresAuth: true, title: '캐릭터 이미지 관리' },
+        },
       ],
     },
     {

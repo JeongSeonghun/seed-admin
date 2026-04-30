@@ -26,6 +26,12 @@ async function logout() {
         <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
         <router-link :to="{ name: 'monitor' }" class="nav-item">서버 모니터링</router-link>
         <div class="nav-divider" />
+        <div class="nav-section">게임 관리</div>
+        <router-link :to="{ name: 'game-words' }" class="nav-item nav-sub">단어</router-link>
+        <router-link :to="{ name: 'game-stages' }" class="nav-item nav-sub">스테이지</router-link>
+        <router-link :to="{ name: 'game-packages' }" class="nav-item nav-sub">패키지</router-link>
+        <router-link :to="{ name: 'game-my-images' }" class="nav-item nav-sub">캐릭터 이미지</router-link>
+        <div class="nav-divider" />
         <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
     </aside>
@@ -86,6 +92,18 @@ nav {
   height: 1px;
   background: rgba(255,255,255,0.1);
   margin: 0.5rem 0;
+}
+.nav-section {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.75rem 0.1rem;
+}
+.nav-sub {
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
 }
 .main {
   flex: 1;
