@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/network'
 
+interface LevelConfig { level: number; count: number }
 interface Stage {
   id: number
   level: number
   stageNumber: number
+  stageType: 'NORMAL' | 'BOSS'
   wordCount: number
   normalCount: number
   bossCount: number
   expPerCorrect: number
   clearExp: number
   clearCoin: number
+  levelConfigs: LevelConfig[]
 }
 
 const stages = ref<Stage[]>([])
@@ -19,51 +22,71 @@ const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
-const form = ref({ id: 0, level: 1, stageNumber: 1, wordCount: 10, expPerCorrect: 5, clearExp: 50, clearCoin: 10 })
+const form = ref({
+  id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
+  levelConfigs: [{ level: 1, count: 10 }] as LevelConfig[],
+  expPerCorrect: 5, clearExp: 50, clearCoin: 10,
+})
+
+const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
 
 async function load() {
   loading.value = true
-  try {
-    const res = await api.getGameStages()
-    stages.value = res.data
-  } finally {
-    loading.value = false
-  }
+  try { stages.value = (await api.getGameStages()).data }
+  finally { loading.value = false }
 }
-
 onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, wordCount: 10, expPerCorrect: 5, clearExp: 50, clearCoin: 10 }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], expPerCorrect: 5, clearExp: 50, clearCoin: 10 }
   showModal.value = true
 }
 
 function openEdit(s: Stage) {
   isEdit.value = true
-  form.value = { id: s.id, level: s.level, stageNumber: s.stageNumber, wordCount: s.wordCount, expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin }
+  form.value = {
+    id: s.id, level: s.level, stageNumber: s.stageNumber, stageType: s.stageType ?? 'NORMAL',
+    levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
+    expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
+  }
   showModal.value = true
+}
+
+function addLevelConfig() { form.value.levelConfigs.push({ level: 1, count: 5 }) }
+function removeLevelConfig(i: number) {
+  if (form.value.levelConfigs.length > 1) form.value.levelConfigs.splice(i, 1)
 }
 
 async function save() {
   saving.value = true
   try {
-    const body = { level: form.value.level, stageNumber: form.value.stageNumber, wordCount: form.value.wordCount, expPerCorrect: form.value.expPerCorrect, clearExp: form.value.clearExp, clearCoin: form.value.clearCoin }
+    const body = {
+      level: form.value.level,
+      stageNumber: form.value.stageNumber,
+      stageType: form.value.stageType,
+      levelConfigs: form.value.levelConfigs,
+      expPerCorrect: form.value.expPerCorrect,
+      clearExp: form.value.clearExp,
+      clearCoin: form.value.clearCoin,
+    }
     if (isEdit.value) await api.updateGameStage(form.value.id, body)
     else await api.createGameStage(body)
     showModal.value = false
     await load()
-  } catch (e: any) {
-    alert(e?.response?.data?.message ?? '저장 실패')
-  } finally {
-    saving.value = false
-  }
+  } catch (e: any) { alert(e?.response?.data?.message ?? '저장 실패') }
+  finally { saving.value = false }
 }
 
 async function remove(s: Stage) {
   if (!confirm(`레벨 ${s.level} - 스테이지 ${s.stageNumber}을(를) 삭제하시겠습니까?`)) return
   await api.deleteGameStage(s.id)
   await load()
+}
+
+function cfgSummary(s: Stage) {
+  if (!s.levelConfigs?.length) return `Lv${s.level} × ${s.wordCount}`
+  return s.levelConfigs.map(c => `Lv${c.level}×${c.count}`).join(' + ')
 }
 </script>
 
@@ -76,14 +99,15 @@ async function remove(s: Stage) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>레벨</th><th>스테이지</th><th>단어 수</th><th>일반 / 보스</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
+          <tr><th>레벨</th><th>스테이지</th><th>타입</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="s in stages" :key="s.id">
             <td><span class="badge badge-blue">Lv{{ s.level }}</span></td>
             <td>Stage {{ s.stageNumber }}</td>
+            <td><span class="badge" :class="s.stageType === 'BOSS' ? 'badge-red' : 'badge-gray'">{{ s.stageType }}</span></td>
+            <td class="cfg-cell">{{ cfgSummary(s) }}</td>
             <td>{{ s.wordCount }}개</td>
-            <td>{{ s.normalCount }} / {{ s.bossCount }}</td>
             <td>{{ s.expPerCorrect }} exp</td>
             <td>{{ s.clearExp }} exp + {{ s.clearCoin }} coin</td>
             <td>
@@ -91,7 +115,7 @@ async function remove(s: Stage) {
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!stages.length"><td colspan="7" class="empty">스테이지가 없습니다.</td></tr>
+          <tr v-if="!stages.length"><td colspan="8" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -101,23 +125,37 @@ async function remove(s: Stage) {
         <h3>{{ isEdit ? '스테이지 편집' : '스테이지 추가' }}</h3>
         <div class="form-row">
           <div class="form-col">
-            <label>레벨</label>
+            <label>카테고리 레벨</label>
             <select v-model="form.level" :disabled="isEdit">
               <option v-for="l in 10" :key="l" :value="l">{{ l }}</option>
             </select>
           </div>
           <div class="form-col">
             <label>스테이지 번호</label>
-            <select v-model="form.stageNumber" :disabled="isEdit">
-              <option :value="1">1</option>
-              <option :value="2">2</option>
-            </select>
+            <input v-model.number="form.stageNumber" type="number" min="1" :disabled="isEdit" />
           </div>
           <div class="form-col">
-            <label>단어 수 (10~20)</label>
-            <input v-model.number="form.wordCount" type="number" min="10" max="20" />
+            <label>스테이지 타입</label>
+            <select v-model="form.stageType">
+              <option value="NORMAL">NORMAL</option>
+              <option value="BOSS">BOSS</option>
+            </select>
           </div>
         </div>
+
+        <label class="section-label">레벨 구성 <span class="total-count">총 {{ totalWordCount }}개</span></label>
+        <div class="cfg-list">
+          <div v-for="(cfg, i) in form.levelConfigs" :key="i" class="cfg-row">
+            <select v-model="cfg.level">
+              <option v-for="l in 10" :key="l" :value="l">레벨 {{ l }}</option>
+            </select>
+            <input v-model.number="cfg.count" type="number" min="1" max="30" placeholder="개수" />
+            <span class="cfg-unit">개</span>
+            <button class="btn-cfg-del" :disabled="form.levelConfigs.length <= 1" @click="removeLevelConfig(i)">✕</button>
+          </div>
+          <button class="btn-add-cfg" @click="addLevelConfig">+ 레벨 추가</button>
+        </div>
+
         <div class="form-row">
           <div class="form-col">
             <label>정답당 경험치</label>
@@ -150,9 +188,12 @@ th, td { padding: 0.7rem 1rem; text-align: left; font-size: 0.875rem; }
 th { background: #f7f8fa; font-weight: 600; color: #555; border-bottom: 1px solid #eee; }
 td { border-bottom: 1px solid #f0f0f0; }
 tr:last-child td { border-bottom: none; }
+.cfg-cell { font-size: 0.8rem; color: #555; font-family: monospace; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }
+.badge-red { background: #fff5f5; color: #c53030; }
+.badge-gray { background: #f0f0f0; color: #888; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -162,12 +203,22 @@ tr:last-child td { border-bottom: none; }
 .btn-danger { color: #e53e3e; border-color: #fed7d7; }
 .btn-danger:hover { background: #fff5f5; }
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: white; border-radius: 12px; padding: 1.75rem 2rem; width: 480px; max-width: 95vw; display: flex; flex-direction: column; gap: 0.5rem; }
+.modal { background: white; border-radius: 12px; padding: 1.75rem 2rem; width: 500px; max-width: 95vw; display: flex; flex-direction: column; gap: 0.5rem; }
 .modal h3 { font-size: 1.1rem; color: #1a1a2e; margin-bottom: 0.5rem; }
 .form-row { display: flex; gap: 0.75rem; }
 .form-col { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
 .modal label { font-size: 0.8rem; font-weight: 600; color: #555; margin-top: 0.3rem; }
-.modal input, .modal select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; }
+.modal input, .modal select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box; }
 .modal input:disabled, .modal select:disabled { background: #f7f8fa; color: #888; }
+.section-label { font-size: 0.8rem; font-weight: 600; color: #555; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.total-count { font-weight: 400; color: #4a6cf7; }
+.cfg-list { display: flex; flex-direction: column; gap: 0.4rem; background: #f7f8fa; border-radius: 8px; padding: 0.75rem; }
+.cfg-row { display: flex; align-items: center; gap: 0.5rem; }
+.cfg-row select { width: 110px; flex-shrink: 0; }
+.cfg-row input { width: 70px; flex-shrink: 0; }
+.cfg-unit { font-size: 0.8rem; color: #888; }
+.btn-cfg-del { background: none; border: none; cursor: pointer; color: #e53e3e; font-size: 0.9rem; padding: 0 0.25rem; }
+.btn-cfg-del:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-add-cfg { align-self: flex-start; padding: 0.3rem 0.75rem; background: white; border: 1px dashed #4a6cf7; border-radius: 6px; color: #4a6cf7; cursor: pointer; font-size: 0.8rem; margin-top: 0.25rem; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
 </style>

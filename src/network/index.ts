@@ -171,6 +171,14 @@ export default {
   deleteGameWord(id: number) {
     return http.delete(`/admin/game/words/${id}`)
   },
+  importGameWords(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    return http.post<{ total: number; created: number; skipped: number; errors: string[] }>(
+      '/admin/game/words/import', form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
 
   // 게임 - 스테이지
   getGameStages() {

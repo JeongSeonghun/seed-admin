@@ -10,6 +10,7 @@ interface Word {
   partOfSpeech: string | null
   exampleEn: string | null
   exampleKo: string | null
+  tags: string[]
   isActive: boolean
 }
 
@@ -26,7 +27,27 @@ const filterLevel = ref<string>('')
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
-const form = ref({ id: 0, english: '', korean: '', level: 1, partOfSpeech: '', exampleEn: '', exampleKo: '', isActive: true })
+const form = ref({ id: 0, english: '', korean: '', level: 1, partOfSpeech: '', exampleEn: '', exampleKo: '', tagsInput: '', isActive: true })
+
+const importing = ref(false)
+const importResult = ref<{ total: number; created: number; skipped: number; errors: string[] } | null>(null)
+
+async function handleImport(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  importing.value = true
+  importResult.value = null
+  try {
+    const { data } = await api.importGameWords(file)
+    importResult.value = data
+    await load()
+  } catch (err: any) {
+    alert(err?.response?.data?.message ?? '가져오기 실패')
+  } finally {
+    importing.value = false
+    ;(e.target as HTMLInputElement).value = ''
+  }
+}
 
 async function load() {
   loading.value = true
@@ -42,13 +63,13 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, english: '', korean: '', level: 1, partOfSpeech: '', exampleEn: '', exampleKo: '', isActive: true }
+  form.value = { id: 0, english: '', korean: '', level: 1, partOfSpeech: '', exampleEn: '', exampleKo: '', tagsInput: '', isActive: true }
   showModal.value = true
 }
 
 function openEdit(w: Word) {
   isEdit.value = true
-  form.value = { id: w.id, english: w.english, korean: w.korean, level: w.level, partOfSpeech: w.partOfSpeech ?? '', exampleEn: w.exampleEn ?? '', exampleKo: w.exampleKo ?? '', isActive: w.isActive }
+  form.value = { id: w.id, english: w.english, korean: w.korean, level: w.level, partOfSpeech: w.partOfSpeech ?? '', exampleEn: w.exampleEn ?? '', exampleKo: w.exampleKo ?? '', tagsInput: (w.tags ?? []).join(', '), isActive: w.isActive }
   showModal.value = true
 }
 
@@ -62,6 +83,7 @@ async function save() {
       partOfSpeech: form.value.partOfSpeech || undefined,
       exampleEn: form.value.exampleEn || undefined,
       exampleKo: form.value.exampleKo || undefined,
+      tags: form.value.tagsInput.split(',').map(t => t.trim()).filter(Boolean),
       isActive: form.value.isActive,
     }
     if (isEdit.value) await api.updateGameWord(form.value.id, body)
@@ -92,7 +114,21 @@ async function remove(w: Word) {
         </select>
         <span class="count">총 {{ words.length }}개</span>
       </div>
-      <button class="btn-primary" @click="openCreate">+ 단어 추가</button>
+      <div class="toolbar-right">
+        <label class="btn-import" :class="{ disabled: importing }">
+          {{ importing ? '가져오는 중...' : '파일 가져오기' }}
+          <input type="file" accept=".xlsx,.xls,.json,.csv,.txt" hidden :disabled="importing" @change="handleImport" />
+        </label>
+        <button class="btn-primary" @click="openCreate">+ 단어 추가</button>
+      </div>
+    </div>
+
+    <div v-if="importResult" class="import-result" :class="importResult.errors.length ? 'has-errors' : 'success'">
+      <span>완료: {{ importResult.created }}개 등록 / {{ importResult.skipped }}개 건너뜀 (전체 {{ importResult.total }}개)</span>
+      <button class="result-close" @click="importResult = null">✕</button>
+      <ul v-if="importResult.errors.length" class="error-list">
+        <li v-for="(e, i) in importResult.errors" :key="i">{{ e }}</li>
+      </ul>
     </div>
 
     <div v-if="loading" class="loading">불러오는 중...</div>
@@ -151,6 +187,8 @@ async function remove(w: Word) {
         <input v-model="form.exampleEn" type="text" placeholder="I eat an apple." />
         <label>예문 (한국어)</label>
         <input v-model="form.exampleKo" type="text" placeholder="나는 사과를 먹는다." />
+        <label>태그 <span class="hint">(쉼표로 구분)</span></label>
+        <input v-model="form.tagsInput" type="text" placeholder="school, work, travel" />
         <label class="check-label">
           <input type="checkbox" v-model="form.isActive" /> 활성
         </label>
@@ -165,6 +203,15 @@ async function remove(w: Word) {
 
 <style scoped>
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.toolbar-right { display: flex; gap: 0.5rem; align-items: center; }
+.btn-import { padding: 0.45rem 1rem; background: #f0f2f5; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
+.btn-import:hover { background: #e2e8f0; }
+.btn-import.disabled { opacity: 0.6; cursor: not-allowed; }
+.import-result { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; }
+.import-result.success { background: #f0fff4; border: 1px solid #9ae6b4; color: #276749; }
+.import-result.has-errors { background: #fffbeb; border: 1px solid #f6e05e; color: #744210; }
+.result-close { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 0.9rem; color: inherit; }
+.error-list { width: 100%; margin: 0; padding-left: 1.2rem; font-size: 0.8rem; }
 .filters { display: flex; align-items: center; gap: 0.75rem; }
 .filters select { padding: 0.4rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; }
 .count { font-size: 0.8rem; color: #888; }
@@ -195,6 +242,7 @@ tr:last-child td { border-bottom: none; }
 .form-row { display: flex; gap: 0.75rem; }
 .form-col { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
 .modal label { font-size: 0.8rem; font-weight: 600; color: #555; margin-top: 0.3rem; }
+.hint { font-weight: 400; color: #aaa; }
 .modal input[type="text"], .modal select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; }
 .check-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; cursor: pointer; font-weight: normal !important; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
