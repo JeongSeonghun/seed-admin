@@ -23,8 +23,10 @@ async function logout() {
         <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
         <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
         <div class="nav-divider" />
+        <router-link :to="{ name: 'services' }" class="nav-item">서비스 관리</router-link>
         <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
         <router-link :to="{ name: 'monitor' }" class="nav-item">서버 모니터링</router-link>
+        <router-link :to="{ name: 'versions' }" class="nav-item">버전 관리</router-link>
         <div class="nav-divider" />
         <div class="nav-section">게임 관리</div>
         <router-link :to="{ name: 'game-words' }" class="nav-item nav-sub">단어</router-link>

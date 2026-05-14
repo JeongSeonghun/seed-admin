@@ -46,6 +46,18 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '서버 모니터링' },
         },
         {
+          path: 'services',
+          name: 'services',
+          component: () => import('@/views/ServicesView.vue'),
+          meta: { requiresAuth: true, title: '서비스 관리' },
+        },
+        {
+          path: 'versions',
+          name: 'versions',
+          component: () => import('@/views/VersionsView.vue'),
+          meta: { requiresAuth: true, title: '버전 관리' },
+        },
+        {
           path: 'my',
           name: 'my',
           component: () => import('@/views/MyPageView.vue'),

@@ -106,7 +106,16 @@ export default {
     return http.get('/admin/dashboard')
   },
   getServices() {
-    return http.get('/admin/users/services')
+    return http.get('/admin/services')
+  },
+  createService(body: { name: string; label: string }) {
+    return http.post('/admin/services', body)
+  },
+  updateService(id: number, body: { label: string }) {
+    return http.patch(`/admin/services/${id}`, body)
+  },
+  deleteService(id: number) {
+    return http.delete(`/admin/services/${id}`)
   },
   getUsers(filter?: 'admin' | 'user') {
     return http.get('/admin/users', { params: filter ? { filter } : undefined })
@@ -156,6 +165,20 @@ export default {
   },
   deleteMonitorServer(id: number) {
     return http.delete(`/admin/monitor/servers/${id}`)
+  },
+
+  // 버전 관리
+  getVersions() {
+    return http.get('/admin/versions')
+  },
+  createVersion(body: object) {
+    return http.post('/admin/versions', body)
+  },
+  updateVersion(id: number, body: object) {
+    return http.patch(`/admin/versions/${id}`, body)
+  },
+  deleteVersion(id: number) {
+    return http.delete(`/admin/versions/${id}`)
   },
 
   // 게임 - 단어
