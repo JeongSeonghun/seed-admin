@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/network'
 
 interface LevelConfig { level: number; count: number }
+interface StageTitle { ko: string; en?: string }
 interface Stage {
   id: number
   level: number
@@ -15,6 +16,7 @@ interface Stage {
   clearExp: number
   clearCoin: number
   levelConfigs: LevelConfig[]
+  title?: StageTitle | null
 }
 
 const stages = ref<Stage[]>([])
@@ -25,6 +27,7 @@ const saving = ref(false)
 const form = ref({
   id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
   levelConfigs: [{ level: 1, count: 10 }] as LevelConfig[],
+  titleKo: '', titleEn: '',
   expPerCorrect: 5, clearExp: 50, clearCoin: 10,
 })
 
@@ -39,7 +42,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], expPerCorrect: 5, clearExp: 50, clearCoin: 10 }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10 }
   showModal.value = true
 }
 
@@ -48,6 +51,7 @@ function openEdit(s: Stage) {
   form.value = {
     id: s.id, level: s.level, stageNumber: s.stageNumber, stageType: s.stageType ?? 'NORMAL',
     levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
+    titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
   }
   showModal.value = true
@@ -61,17 +65,28 @@ function removeLevelConfig(i: number) {
 async function save() {
   saving.value = true
   try {
-    const body = {
-      level: form.value.level,
-      stageNumber: form.value.stageNumber,
-      stageType: form.value.stageType,
-      levelConfigs: form.value.levelConfigs,
-      expPerCorrect: form.value.expPerCorrect,
-      clearExp: form.value.clearExp,
-      clearCoin: form.value.clearCoin,
+    const title = form.value.titleKo ? { ko: form.value.titleKo, ...(form.value.titleEn ? { en: form.value.titleEn } : {}) } : null
+    if (isEdit.value) {
+      await api.updateGameStage(form.value.id, {
+        stageType: form.value.stageType,
+        levelConfigs: form.value.levelConfigs,
+        title,
+        expPerCorrect: form.value.expPerCorrect,
+        clearExp: form.value.clearExp,
+        clearCoin: form.value.clearCoin,
+      })
+    } else {
+      await api.createGameStage({
+        level: form.value.level,
+        stageNumber: form.value.stageNumber,
+        stageType: form.value.stageType,
+        levelConfigs: form.value.levelConfigs,
+        title,
+        expPerCorrect: form.value.expPerCorrect,
+        clearExp: form.value.clearExp,
+        clearCoin: form.value.clearCoin,
+      })
     }
-    if (isEdit.value) await api.updateGameStage(form.value.id, body)
-    else await api.createGameStage(body)
     showModal.value = false
     await load()
   } catch (e: any) { alert(e?.response?.data?.message ?? '저장 실패') }
@@ -99,13 +114,18 @@ function cfgSummary(s: Stage) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>레벨</th><th>스테이지</th><th>타입</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
+          <tr><th>레벨</th><th>스테이지</th><th>타입</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="s in stages" :key="s.id">
             <td><span class="badge badge-blue">Lv{{ s.level }}</span></td>
             <td>Stage {{ s.stageNumber }}</td>
             <td><span class="badge" :class="s.stageType === 'BOSS' ? 'badge-red' : 'badge-gray'">{{ s.stageType }}</span></td>
+            <td class="title-cell">
+              <span v-if="s.title?.ko">{{ s.title.ko }}</span>
+              <span v-else class="empty-title">-</span>
+              <span v-if="s.title?.en" class="title-en">{{ s.title.en }}</span>
+            </td>
             <td class="cfg-cell">{{ cfgSummary(s) }}</td>
             <td>{{ s.wordCount }}개</td>
             <td>{{ s.expPerCorrect }} exp</td>
@@ -115,7 +135,7 @@ function cfgSummary(s: Stage) {
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!stages.length"><td colspan="8" class="empty">스테이지가 없습니다.</td></tr>
+          <tr v-if="!stages.length"><td colspan="9" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -140,6 +160,17 @@ function cfgSummary(s: Stage) {
               <option value="NORMAL">NORMAL</option>
               <option value="BOSS">BOSS</option>
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label>타이틀 (한국어)</label>
+            <input v-model="form.titleKo" type="text" placeholder="예: 어둠의 동굴" />
+          </div>
+          <div class="form-col">
+            <label>타이틀 (영어, 선택)</label>
+            <input v-model="form.titleEn" type="text" placeholder="예: Dark Cave" />
           </div>
         </div>
 
@@ -189,6 +220,9 @@ th { background: #f7f8fa; font-weight: 600; color: #555; border-bottom: 1px soli
 td { border-bottom: 1px solid #f0f0f0; }
 tr:last-child td { border-bottom: none; }
 .cfg-cell { font-size: 0.8rem; color: #555; font-family: monospace; }
+.title-cell { font-size: 0.875rem; }
+.title-en { display: block; font-size: 0.75rem; color: #888; }
+.empty-title { color: #ccc; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }
