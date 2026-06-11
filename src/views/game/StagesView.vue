@@ -17,6 +17,9 @@ interface Stage {
   clearCoin: number
   levelConfigs: LevelConfig[]
   title?: StageTitle | null
+  rewardPackageId?: number | null
+  rewardMyImageId?: number | null
+  rewardMyImageRate?: number
 }
 
 const stages = ref<Stage[]>([])
@@ -29,6 +32,9 @@ const form = ref({
   levelConfigs: [{ level: 1, count: 10 }] as LevelConfig[],
   titleKo: '', titleEn: '',
   expPerCorrect: 5, clearExp: 50, clearCoin: 10,
+  rewardPackageId: null as number | null,
+  rewardMyImageId: null as number | null,
+  rewardMyImageRate: 0.3,
 })
 
 const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
@@ -42,7 +48,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10 }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3 }
   showModal.value = true
 }
 
@@ -53,6 +59,7 @@ function openEdit(s: Stage) {
     levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
     titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
+    rewardPackageId: s.rewardPackageId ?? null, rewardMyImageId: s.rewardMyImageId ?? null, rewardMyImageRate: s.rewardMyImageRate ?? 0.3,
   }
   showModal.value = true
 }
@@ -66,6 +73,11 @@ async function save() {
   saving.value = true
   try {
     const title = form.value.titleKo ? { ko: form.value.titleKo, ...(form.value.titleEn ? { en: form.value.titleEn } : {}) } : null
+    const rewardFields = {
+      rewardPackageId: form.value.rewardPackageId || null,
+      rewardMyImageId: form.value.rewardMyImageId || null,
+      rewardMyImageRate: form.value.rewardMyImageRate,
+    }
     if (isEdit.value) {
       await api.updateGameStage(form.value.id, {
         stageType: form.value.stageType,
@@ -74,6 +86,7 @@ async function save() {
         expPerCorrect: form.value.expPerCorrect,
         clearExp: form.value.clearExp,
         clearCoin: form.value.clearCoin,
+        ...rewardFields,
       })
     } else {
       await api.createGameStage({
@@ -85,6 +98,7 @@ async function save() {
         expPerCorrect: form.value.expPerCorrect,
         clearExp: form.value.clearExp,
         clearCoin: form.value.clearCoin,
+        ...rewardFields,
       })
     }
     showModal.value = false
@@ -201,6 +215,21 @@ function cfgSummary(s: Stage) {
             <input v-model.number="form.clearCoin" type="number" min="0" />
           </div>
         </div>
+        <label class="section-label">클리어 보상</label>
+        <div class="form-row">
+          <div class="form-col">
+            <label>보상 패키지 ID</label>
+            <input v-model.number="form.rewardPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
+          </div>
+          <div class="form-col">
+            <label>보상 캐릭터 ID <span class="label-sub">(BOSS)</span></label>
+            <input v-model.number="form.rewardMyImageId" type="number" min="1" placeholder="없으면 비워두세요" />
+          </div>
+          <div class="form-col">
+            <label>캐릭터 획득 확률 <span class="label-sub">(0~1)</span></label>
+            <input v-model.number="form.rewardMyImageRate" type="number" min="0" max="1" step="0.05" />
+          </div>
+        </div>
         <div class="modal-actions">
           <button class="btn-ghost" @click="showModal = false">취소</button>
           <button class="btn-primary" :disabled="saving" @click="save">{{ saving ? '저장 중...' : '저장' }}</button>
@@ -223,6 +252,7 @@ tr:last-child td { border-bottom: none; }
 .title-cell { font-size: 0.875rem; }
 .title-en { display: block; font-size: 0.75rem; color: #888; }
 .empty-title { color: #ccc; }
+.label-sub { font-weight: 400; color: #aaa; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }
