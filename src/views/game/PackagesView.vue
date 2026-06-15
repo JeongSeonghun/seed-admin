@@ -5,7 +5,7 @@ import api from '@/network'
 interface PackageImage { id: number; imageUrl: string; sortOrder: number }
 interface Package {
   id: number; name: string; description: string | null; coinPrice: number
-  type: 'NORMAL' | 'BOSS'; isDefault: boolean; isActive: boolean; images: PackageImage[]
+  type: 'NORMAL' | 'BOSS'; contentCategory: 'GENERAL' | 'ADULT'; isDefault: boolean; isActive: boolean; images: PackageImage[]
 }
 
 const packages = ref<Package[]>([])
@@ -13,7 +13,7 @@ const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
-const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS', isDefault: false, isActive: true })
+const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS', contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT', isDefault: false, isActive: true })
 
 const uploadingImg = ref(false)
 const selectedPkg = ref<Package | null>(null)
@@ -28,19 +28,19 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL', isDefault: false, isActive: true }
+  form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL', contentCategory: 'GENERAL', isDefault: false, isActive: true }
   showModal.value = true
 }
 function openEdit(p: Package) {
   isEdit.value = true
-  form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type, isDefault: p.isDefault, isActive: p.isActive }
+  form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type, contentCategory: p.contentCategory, isDefault: p.isDefault, isActive: p.isActive }
   showModal.value = true
 }
 
 async function save() {
   saving.value = true
   try {
-    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type, isDefault: form.value.isDefault, isActive: form.value.isActive }
+    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGamePackage(form.value.id, body)
     else await api.createGamePackage(body)
     showModal.value = false; await load()
@@ -86,12 +86,13 @@ async function removeImage(pkg: Package, imgId: number) {
       <div v-else class="table-wrap">
         <table>
           <thead>
-            <tr><th>이름</th><th>타입</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
+            <tr><th>이름</th><th>타입</th><th>카테고리</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
           </thead>
           <tbody>
             <tr v-for="p in packages" :key="p.id" :class="{ selected: selectedPkg?.id === p.id }">
               <td>{{ p.name }}</td>
               <td><span class="badge" :class="p.type === 'BOSS' ? 'badge-red' : 'badge-blue'">{{ p.type }}</span></td>
+              <td><span class="badge" :class="p.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ p.contentCategory === 'ADULT' ? '성인' : '일반' }}</span></td>
               <td>{{ p.coinPrice }}</td>
               <td>{{ p.images.length }}장</td>
               <td>
@@ -104,7 +105,7 @@ async function removeImage(pkg: Package, imgId: number) {
                 <button class="btn-sm btn-danger" @click="remove(p)">삭제</button>
               </td>
             </tr>
-            <tr v-if="!packages.length"><td colspan="6" class="empty">패키지가 없습니다.</td></tr>
+            <tr v-if="!packages.length"><td colspan="7" class="empty">패키지가 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -144,6 +145,13 @@ async function removeImage(pkg: Package, imgId: number) {
           <select v-model="form.type" :disabled="isEdit">
             <option value="NORMAL">NORMAL</option>
             <option value="BOSS">BOSS</option>
+          </select>
+        </div>
+        <div class="form-col">
+          <label>카테고리</label>
+          <select v-model="form.contentCategory">
+            <option value="GENERAL">일반</option>
+            <option value="ADULT">성인</option>
           </select>
         </div>
         <div class="form-col">
@@ -192,6 +200,7 @@ tr.selected td { background: #f5f7ff; }
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
 .badge-purple { background: #faf0ff; color: #805ad5; }
+.badge-adult { background: #fff0f0; color: #c53030; }
 .check-row { display: flex; gap: 1rem; margin-top: 0.25rem; }
 .check-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; cursor: pointer; font-weight: normal !important; }
 .hint { font-size: 0.75rem; color: #aaa; font-weight: 400; }

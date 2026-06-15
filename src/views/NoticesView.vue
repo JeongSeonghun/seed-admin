@@ -6,26 +6,31 @@ interface Notice {
   id: number
   title: string
   content: string
+  serviceTarget: string | null
   isPublished: boolean
   createdAt: string
   updatedAt: string
 }
 
+interface Service { id: number; name: string; label: string }
+
 const notices = ref<Notice[]>([])
+const services = ref<Service[]>([])
 const loading = ref(true)
 const errorMsg = ref('')
 
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
-const form = ref({ id: 0, title: '', content: '', isPublished: false })
+const form = ref({ id: 0, title: '', content: '', serviceTarget: '' as string | null, isPublished: false })
 
 async function load() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const res = await api.getNotices()
-    notices.value = res.data
+    const [noticesRes, svcsRes] = await Promise.all([api.getNotices(), api.getServices()])
+    notices.value = noticesRes.data
+    services.value = svcsRes.data
   } catch {
     errorMsg.value = '목록을 불러오지 못했습니다.'
   } finally {
@@ -35,34 +40,34 @@ async function load() {
 
 onMounted(load)
 
+function serviceLabel(name: string | null) {
+  if (!name) return '전체'
+  return services.value.find(s => s.name === name)?.label ?? name
+}
+
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, title: '', content: '', isPublished: false }
+  form.value = { id: 0, title: '', content: '', serviceTarget: null, isPublished: false }
   showModal.value = true
 }
 
 function openEdit(n: Notice) {
   isEdit.value = true
-  form.value = { id: n.id, title: n.title, content: n.content, isPublished: n.isPublished }
+  form.value = { id: n.id, title: n.title, content: n.content, serviceTarget: n.serviceTarget, isPublished: n.isPublished }
   showModal.value = true
 }
 
 async function save() {
   saving.value = true
   try {
-    if (isEdit.value) {
-      await api.updateNotice(form.value.id, {
-        title: form.value.title,
-        content: form.value.content,
-        isPublished: form.value.isPublished,
-      })
-    } else {
-      await api.createNotice({
-        title: form.value.title,
-        content: form.value.content,
-        isPublished: form.value.isPublished,
-      })
+    const body = {
+      title: form.value.title,
+      content: form.value.content,
+      serviceTarget: form.value.serviceTarget || null,
+      isPublished: form.value.isPublished,
     }
+    if (isEdit.value) await api.updateNotice(form.value.id, body)
+    else await api.createNotice(body)
     showModal.value = false
     await load()
   } catch (e: any) {
@@ -111,6 +116,7 @@ function formatDate(iso: string) {
           <tr>
             <th>ID</th>
             <th>제목</th>
+            <th>대상</th>
             <th>게시 상태</th>
             <th>최종 수정</th>
             <th>액션</th>
@@ -120,6 +126,11 @@ function formatDate(iso: string) {
           <tr v-for="n in notices" :key="n.id">
             <td>{{ n.id }}</td>
             <td class="title-cell">{{ n.title }}</td>
+            <td>
+              <span class="badge" :class="n.serviceTarget ? 'badge-blue' : 'badge-gray'">
+                {{ serviceLabel(n.serviceTarget) }}
+              </span>
+            </td>
             <td>
               <button class="toggle-btn" :class="n.isPublished ? 'on' : 'off'" @click="togglePublish(n)">
                 {{ n.isPublished ? '게시 중' : '미게시' }}
@@ -132,7 +143,7 @@ function formatDate(iso: string) {
             </td>
           </tr>
           <tr v-if="notices.length === 0">
-            <td colspan="5" class="empty">공지사항이 없습니다.</td>
+            <td colspan="6" class="empty">공지사항이 없습니다.</td>
           </tr>
         </tbody>
       </table>
@@ -148,6 +159,12 @@ function formatDate(iso: string) {
 
         <label>내용</label>
         <textarea v-model="form.content" rows="8" placeholder="공지사항 내용을 입력하세요." />
+
+        <label>대상 서비스</label>
+        <select v-model="form.serviceTarget">
+          <option :value="null">전체 (모든 서비스)</option>
+          <option v-for="s in services" :key="s.id" :value="s.name">{{ s.label }} ({{ s.name }})</option>
+        </select>
 
         <label class="check-label">
           <input type="checkbox" v-model="form.isPublished" />
@@ -184,6 +201,10 @@ tr:last-child td { border-bottom: none; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .title-cell { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .date-cell { color: #888; font-size: 0.8rem; white-space: nowrap; }
+
+.badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+.badge-blue { background: #ebf4ff; color: #2b6cb0; }
+.badge-gray { background: #f0f0f0; color: #888; }
 
 .toggle-btn {
   padding: 0.25rem 0.65rem;
@@ -249,7 +270,8 @@ tr:last-child td { border-bottom: none; }
 }
 .modal h3 { margin-bottom: 0.5rem; font-size: 1.1rem; color: #1a1a2e; }
 .modal label { font-size: 0.8rem; font-weight: 600; color: #555; margin-top: 0.4rem; }
-.modal input[type="text"] {
+.modal input[type="text"],
+.modal select {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid #ddd;

@@ -5,7 +5,7 @@ import api from '@/network'
 interface BundleItem { bundleId: number; packageId: number }
 interface Bundle {
   id: number; name: string; description: string | null
-  coinPrice: number; isActive: boolean; items: BundleItem[]
+  coinPrice: number; contentCategory: 'GENERAL' | 'ADULT'; isActive: boolean; items: BundleItem[]
 }
 
 const bundles = ref<Bundle[]>([])
@@ -14,7 +14,7 @@ const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
 const form = ref({
-  id: 0, name: '', description: '', coinPrice: 0, isActive: true,
+  id: 0, name: '', description: '', coinPrice: 0, contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT', isActive: true,
   packageIdsStr: '',
 })
 
@@ -27,7 +27,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', description: '', coinPrice: 0, isActive: true, packageIdsStr: '' }
+  form.value = { id: 0, name: '', description: '', coinPrice: 0, contentCategory: 'GENERAL', isActive: true, packageIdsStr: '' }
   showModal.value = true
 }
 
@@ -35,7 +35,7 @@ function openEdit(b: Bundle) {
   isEdit.value = true
   form.value = {
     id: b.id, name: b.name, description: b.description ?? '',
-    coinPrice: b.coinPrice, isActive: b.isActive,
+    coinPrice: b.coinPrice, contentCategory: b.contentCategory, isActive: b.isActive,
     packageIdsStr: b.items.map((i) => i.packageId).join(', '),
   }
   showModal.value = true
@@ -53,7 +53,7 @@ async function save() {
   try {
     const packageIds = parsePackageIds()
     if (!packageIds.length) { alert('패키지 ID를 1개 이상 입력해주세요.'); return }
-    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, isActive: form.value.isActive, packageIds }
+    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, contentCategory: form.value.contentCategory, isActive: form.value.isActive, packageIds }
     if (isEdit.value) await api.updateGameBundle(form.value.id, body)
     else await api.createGameBundle(body)
     showModal.value = false
@@ -78,12 +78,13 @@ async function remove(b: Bundle) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>이름</th><th>설명</th><th>코인</th><th>포함 패키지 ID</th><th>활성</th><th>액션</th></tr>
+          <tr><th>이름</th><th>설명</th><th>카테고리</th><th>코인</th><th>포함 패키지 ID</th><th>활성</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="b in bundles" :key="b.id">
             <td>{{ b.name }}</td>
             <td class="desc-cell">{{ b.description ?? '-' }}</td>
+            <td><span class="badge" :class="b.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ b.contentCategory === 'ADULT' ? '성인' : '일반' }}</span></td>
             <td>{{ b.coinPrice }}</td>
             <td class="id-cell">{{ b.items.map(i => i.packageId).join(', ') || '-' }}</td>
             <td><span class="badge" :class="b.isActive ? 'badge-green' : 'badge-gray'">{{ b.isActive ? '활성' : '비활성' }}</span></td>
@@ -92,7 +93,7 @@ async function remove(b: Bundle) {
               <button class="btn-sm btn-danger" @click="remove(b)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!bundles.length"><td colspan="6" class="empty">번들이 없습니다.</td></tr>
+          <tr v-if="!bundles.length"><td colspan="7" class="empty">번들이 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -112,6 +113,11 @@ async function remove(b: Bundle) {
         </div>
         <label>포함 패키지 ID <span class="hint">쉼표로 구분 (예: 1, 2, 3)</span></label>
         <input v-model="form.packageIdsStr" type="text" placeholder="1, 2, 3" />
+        <label>카테고리</label>
+        <select v-model="form.contentCategory">
+          <option value="GENERAL">일반</option>
+          <option value="ADULT">성인</option>
+        </select>
         <div class="check-row">
           <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성</label>
         </div>
@@ -139,6 +145,7 @@ tr:last-child td { border-bottom: none; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
+.badge-adult { background: #fff0f0; color: #c53030; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -126,7 +126,7 @@ export default {
   createUser(body: { email: string; password: string; name?: string; phone?: string; roles?: string[]; serviceIds?: number[] }) {
     return http.post('/admin/users', body)
   },
-  updateUser(id: number, body: { name?: string; phone?: string; password?: string }) {
+  updateUser(id: number, body: { name?: string; phone?: string; password?: string; isAdultVerified?: boolean }) {
     return http.patch(`/admin/users/${id}`, body)
   },
   updateUserRoles(id: number, roles: string[]) {
@@ -143,10 +143,10 @@ export default {
   getNotices() {
     return http.get('/admin/notices')
   },
-  createNotice(body: { title: string; content: string; isPublished?: boolean }) {
+  createNotice(body: { title: string; content: string; serviceTarget?: string | null; isPublished?: boolean }) {
     return http.post('/admin/notices', body)
   },
-  updateNotice(id: number, body: { title?: string; content?: string; isPublished?: boolean }) {
+  updateNotice(id: number, body: { title?: string; content?: string; serviceTarget?: string | null; isPublished?: boolean }) {
     return http.patch(`/admin/notices/${id}`, body)
   },
   deleteNotice(id: number) {
@@ -263,6 +263,14 @@ export default {
   },
   deleteGameMyImage(id: number) {
     return http.delete(`/admin/game/my-images/${id}`)
+  },
+
+  // 앱 설정
+  getAppConfigs() {
+    return http.get<{ key: string; value: string | null; description: string | null; updatedAt: string }[]>('/admin/game/app-configs')
+  },
+  updateAppConfig(key: string, value: string) {
+    return http.patch(`/admin/game/app-configs/${key}`, { value })
   },
 
   // 이미지 업로드

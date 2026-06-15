@@ -93,6 +93,12 @@ const router = createRouter({
           component: () => import('@/views/game/MyImagesView.vue'),
           meta: { requiresAuth: true, title: '캐릭터 이미지 관리' },
         },
+        {
+          path: 'game/app-config',
+          name: 'game-app-config',
+          component: () => import('@/views/game/AppConfigView.vue'),
+          meta: { requiresAuth: true, title: '앱 설정' },
+        },
       ],
     },
     {

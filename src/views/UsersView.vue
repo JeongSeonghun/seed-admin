@@ -14,6 +14,7 @@ interface User {
   email: string
   name: string
   phone: string
+  isAdultVerified: boolean
   roles: string[]
   services: ServiceAccess[]
 }
@@ -134,6 +135,15 @@ async function setServiceStatus(userId: number, serviceId: number, status: 'APPR
   }
 }
 
+async function toggleAdultVerified(u: User) {
+  try {
+    await api.updateUser(u.id, { isAdultVerified: !u.isAdultVerified })
+    await load()
+  } catch {
+    alert('성인인증 변경에 실패했습니다.')
+  }
+}
+
 const statusLabel: Record<string, string> = { PENDING: '대기', APPROVED: '승인', REJECTED: '거절' }
 const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED: 'badge-green', REJECTED: 'badge-red' }
 </script>
@@ -154,6 +164,7 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
             <th>ID</th>
             <th>이메일</th>
             <th>이름</th>
+            <th>성인인증</th>
             <th>서비스 접근</th>
             <th>액션</th>
           </tr>
@@ -163,6 +174,14 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
             <td>{{ u.id }}</td>
             <td>{{ u.email }}</td>
             <td>{{ u.name || '-' }}</td>
+            <td>
+              <span class="badge" :class="u.isAdultVerified ? 'badge-adult' : 'badge-gray'">
+                {{ u.isAdultVerified ? '인증됨' : '미인증' }}
+              </span>
+              <button class="btn-xs" :class="u.isAdultVerified ? 'btn-reject' : 'btn-approve'" @click="toggleAdultVerified(u)">
+                {{ u.isAdultVerified ? '해제' : '인증' }}
+              </button>
+            </td>
             <td>
               <div v-if="u.services.length === 0" class="no-svc">없음</div>
               <div v-for="s in u.services" :key="s.id" class="svc-row">
@@ -178,7 +197,7 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
             </td>
           </tr>
           <tr v-if="users.length === 0">
-            <td colspan="5" class="empty">사용자가 없습니다.</td>
+            <td colspan="6" class="empty">사용자가 없습니다.</td>
           </tr>
         </tbody>
       </table>
@@ -249,6 +268,8 @@ tr:last-child td { border-bottom: none; }
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-yellow { background: #fffff0; color: #975a16; }
 .badge-red { background: #fff5f5; color: #c53030; }
+.badge-gray { background: #f0f0f0; color: #888; }
+.badge-adult { background: #fff0f0; color: #c53030; }
 
 .svc-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
 .svc-name { font-size: 0.8rem; color: #555; flex: 1; }

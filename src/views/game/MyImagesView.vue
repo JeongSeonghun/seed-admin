@@ -10,6 +10,7 @@ interface MyImage {
   criticalUrl: string
   deadUrl: string
   coinPrice: number | null
+  contentCategory: 'GENERAL' | 'ADULT'
   isDefault: boolean
   isActive: boolean
 }
@@ -29,6 +30,7 @@ const form = ref({
   criticalUrl: '',
   deadUrl: '',
   coinPrice: null as number | null,
+  contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT',
   isDefault: false,
   isActive: true,
 })
@@ -42,13 +44,13 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', normalUrl: '', hitUrl: '', criticalUrl: '', deadUrl: '', coinPrice: null, isDefault: false, isActive: true }
+  form.value = { id: 0, name: '', normalUrl: '', hitUrl: '', criticalUrl: '', deadUrl: '', coinPrice: null, contentCategory: 'GENERAL', isDefault: false, isActive: true }
   showModal.value = true
 }
 
 function openEdit(img: MyImage) {
   isEdit.value = true
-  form.value = { id: img.id, name: img.name, normalUrl: img.normalUrl, hitUrl: img.hitUrl, criticalUrl: img.criticalUrl, deadUrl: img.deadUrl, coinPrice: img.coinPrice, isDefault: img.isDefault, isActive: img.isActive }
+  form.value = { id: img.id, name: img.name, normalUrl: img.normalUrl, hitUrl: img.hitUrl, criticalUrl: img.criticalUrl, deadUrl: img.deadUrl, coinPrice: img.coinPrice, contentCategory: img.contentCategory, isDefault: img.isDefault, isActive: img.isActive }
   showModal.value = true
 }
 
@@ -68,7 +70,7 @@ async function uploadForField(field: 'normalUrl' | 'hitUrl' | 'criticalUrl' | 'd
 async function save() {
   saving.value = true
   try {
-    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice: form.value.coinPrice ?? undefined, isDefault: form.value.isDefault, isActive: form.value.isActive }
+    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice: form.value.coinPrice ?? undefined, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGameMyImage(form.value.id, body)
     else await api.createGameMyImage(body)
     showModal.value = false
@@ -98,6 +100,7 @@ async function remove(img: MyImage) {
           <div class="badges">
             <span v-if="img.isDefault" class="badge badge-purple">기본</span>
             <span v-if="img.coinPrice !== null" class="badge badge-yellow">{{ img.coinPrice }}코인</span>
+            <span class="badge" :class="img.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ img.contentCategory === 'ADULT' ? '성인' : '일반' }}</span>
             <span class="badge" :class="img.isActive ? 'badge-green' : 'badge-gray'">{{ img.isActive ? '활성' : '비활성' }}</span>
           </div>
         </div>
@@ -135,6 +138,11 @@ async function remove(img: MyImage) {
 
         <label>코인 가격 <span class="hint">비워두면 상점에 미노출 (보상/기본 전용)</span></label>
         <input v-model.number="form.coinPrice" type="number" min="0" placeholder="예: 100 (비우면 판매 안 함)" />
+        <label>카테고리</label>
+        <select v-model="form.contentCategory">
+          <option value="GENERAL">일반</option>
+          <option value="ADULT">성인</option>
+        </select>
         <div class="check-row">
           <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 캐릭터</label>
           <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성</label>
@@ -167,6 +175,7 @@ async function remove(img: MyImage) {
 .badge-yellow { background: #fffbeb; color: #b7791f; }
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
+.badge-adult { background: #fff0f0; color: #c53030; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -34,6 +34,7 @@ async function logout() {
         <router-link :to="{ name: 'game-packages' }" class="nav-item nav-sub">패키지</router-link>
         <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>
         <router-link :to="{ name: 'game-my-images' }" class="nav-item nav-sub">캐릭터 이미지</router-link>
+        <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>
         <div class="nav-divider" />
         <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
