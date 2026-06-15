@@ -5,7 +5,7 @@ import api from '@/network'
 interface PackageImage { id: number; imageUrl: string; sortOrder: number }
 interface Package {
   id: number; name: string; description: string | null; coinPrice: number
-  type: 'NORMAL' | 'BOSS'; isActive: boolean; images: PackageImage[]
+  type: 'NORMAL' | 'BOSS'; isDefault: boolean; isActive: boolean; images: PackageImage[]
 }
 
 const packages = ref<Package[]>([])
@@ -13,7 +13,7 @@ const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
-const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS' })
+const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS', isDefault: false, isActive: true })
 
 const uploadingImg = ref(false)
 const selectedPkg = ref<Package | null>(null)
@@ -28,19 +28,19 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' }
+  form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL', isDefault: false, isActive: true }
   showModal.value = true
 }
 function openEdit(p: Package) {
   isEdit.value = true
-  form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type }
+  form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type, isDefault: p.isDefault, isActive: p.isActive }
   showModal.value = true
 }
 
 async function save() {
   saving.value = true
   try {
-    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type }
+    const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGamePackage(form.value.id, body)
     else await api.createGamePackage(body)
     showModal.value = false; await load()
@@ -86,7 +86,7 @@ async function removeImage(pkg: Package, imgId: number) {
       <div v-else class="table-wrap">
         <table>
           <thead>
-            <tr><th>이름</th><th>타입</th><th>코인</th><th>이미지수</th><th>활성</th><th>액션</th></tr>
+            <tr><th>이름</th><th>타입</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
           </thead>
           <tbody>
             <tr v-for="p in packages" :key="p.id" :class="{ selected: selectedPkg?.id === p.id }">
@@ -94,7 +94,10 @@ async function removeImage(pkg: Package, imgId: number) {
               <td><span class="badge" :class="p.type === 'BOSS' ? 'badge-red' : 'badge-blue'">{{ p.type }}</span></td>
               <td>{{ p.coinPrice }}</td>
               <td>{{ p.images.length }}장</td>
-              <td><span class="badge" :class="p.isActive ? 'badge-green' : 'badge-gray'">{{ p.isActive ? '활성' : '비활성' }}</span></td>
+              <td>
+                <span v-if="p.isDefault" class="badge badge-purple">기본</span>
+                <span class="badge" :class="p.isActive ? 'badge-green' : 'badge-gray'">{{ p.isActive ? '활성' : '비활성' }}</span>
+              </td>
               <td>
                 <button class="btn-sm" @click="openImages(p)">이미지</button>
                 <button class="btn-sm" @click="openEdit(p)">편집</button>
@@ -148,6 +151,10 @@ async function removeImage(pkg: Package, imgId: number) {
           <input v-model.number="form.coinPrice" type="number" min="0" />
         </div>
       </div>
+      <div class="check-row">
+        <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 패키지 <span class="hint">(미보유 유저 fallback)</span></label>
+        <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성</label>
+      </div>
       <div class="modal-actions">
         <button class="btn-ghost" @click="showModal = false">취소</button>
         <button class="btn-primary" :disabled="saving" @click="save">{{ saving ? '저장 중...' : '저장' }}</button>
@@ -184,6 +191,10 @@ tr.selected td { background: #f5f7ff; }
 .badge-red { background: #fff5f5; color: #c53030; }
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
+.badge-purple { background: #faf0ff; color: #805ad5; }
+.check-row { display: flex; gap: 1rem; margin-top: 0.25rem; }
+.check-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; cursor: pointer; font-weight: normal !important; }
+.hint { font-size: 0.75rem; color: #aaa; font-weight: 400; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }

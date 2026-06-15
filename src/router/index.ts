@@ -82,6 +82,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '패키지 관리' },
         },
         {
+          path: 'game/bundles',
+          name: 'game-bundles',
+          component: () => import('@/views/game/BundlesView.vue'),
+          meta: { requiresAuth: true, title: '번들 관리' },
+        },
+        {
           path: 'game/my-images',
           name: 'game-my-images',
           component: () => import('@/views/game/MyImagesView.vue'),

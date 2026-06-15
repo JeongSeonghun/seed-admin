@@ -237,6 +237,20 @@ export default {
     return http.delete(`/admin/game/packages/${packageId}/images/${imageId}`)
   },
 
+  // 게임 - 번들
+  getGameBundles() {
+    return http.get('/admin/game/bundles')
+  },
+  createGameBundle(body: object) {
+    return http.post('/admin/game/bundles', body)
+  },
+  updateGameBundle(id: number, body: object) {
+    return http.patch(`/admin/game/bundles/${id}`, body)
+  },
+  deleteGameBundle(id: number) {
+    return http.delete(`/admin/game/bundles/${id}`)
+  },
+
   // 게임 - 캐릭터 이미지
   getGameMyImages() {
     return http.get('/admin/game/my-images')
