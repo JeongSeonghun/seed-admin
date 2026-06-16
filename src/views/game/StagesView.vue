@@ -10,8 +10,6 @@ interface Stage {
   stageNumber: number
   stageType: 'NORMAL' | 'BOSS'
   wordCount: number
-  normalCount: number
-  bossCount: number
   expPerCorrect: number
   clearExp: number
   clearCoin: number
@@ -20,6 +18,7 @@ interface Stage {
   rewardPackageId?: number | null
   rewardMyImageId?: number | null
   rewardMyImageRate?: number
+  normalPackageIds?: number[] | null
 }
 
 const stages = ref<Stage[]>([])
@@ -35,6 +34,7 @@ const form = ref({
   rewardPackageId: null as number | null,
   rewardMyImageId: null as number | null,
   rewardMyImageRate: 0.3,
+  normalPackageIdsText: '',
 })
 
 const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
@@ -48,7 +48,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3 }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3, normalPackageIdsText: '' }
   showModal.value = true
 }
 
@@ -60,6 +60,7 @@ function openEdit(s: Stage) {
     titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
     rewardPackageId: s.rewardPackageId ?? null, rewardMyImageId: s.rewardMyImageId ?? null, rewardMyImageRate: s.rewardMyImageRate ?? 0.3,
+    normalPackageIdsText: s.normalPackageIds?.join(', ') ?? '',
   }
   showModal.value = true
 }
@@ -67,6 +68,11 @@ function openEdit(s: Stage) {
 function addLevelConfig() { form.value.levelConfigs.push({ level: 1, count: 5 }) }
 function removeLevelConfig(i: number) {
   if (form.value.levelConfigs.length > 1) form.value.levelConfigs.splice(i, 1)
+}
+
+function parsePackageIds(text: string): number[] | null {
+  const ids = text.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0)
+  return ids.length ? ids : null
 }
 
 async function save() {
@@ -78,6 +84,7 @@ async function save() {
       rewardMyImageId: form.value.rewardMyImageId || null,
       rewardMyImageRate: form.value.rewardMyImageRate,
     }
+    const normalPackageIds = form.value.stageType === 'NORMAL' ? parsePackageIds(form.value.normalPackageIdsText) : null
     if (isEdit.value) {
       await api.updateGameStage(form.value.id, {
         stageType: form.value.stageType,
@@ -87,6 +94,7 @@ async function save() {
         clearExp: form.value.clearExp,
         clearCoin: form.value.clearCoin,
         ...rewardFields,
+        normalPackageIds,
       })
     } else {
       await api.createGameStage({
@@ -99,6 +107,7 @@ async function save() {
         clearExp: form.value.clearExp,
         clearCoin: form.value.clearCoin,
         ...rewardFields,
+        normalPackageIds,
       })
     }
     showModal.value = false
@@ -215,6 +224,13 @@ function cfgSummary(s: Stage) {
             <input v-model.number="form.clearCoin" type="number" min="0" />
           </div>
         </div>
+        <div v-if="form.stageType === 'NORMAL'" class="form-row">
+          <div class="form-col">
+            <label>배경 패키지 ID <span class="label-sub">(쉼표 구분, 미설정 시 보유 패키지 랜덤)</span></label>
+            <input v-model="form.normalPackageIdsText" type="text" placeholder="예: 1, 2, 3" />
+          </div>
+        </div>
+
         <label class="section-label">클리어 보상</label>
         <div class="form-row">
           <div class="form-col">
