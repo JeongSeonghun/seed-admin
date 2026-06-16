@@ -217,24 +217,24 @@ export default {
     return http.delete(`/admin/game/stages/${id}`)
   },
 
-  // 게임 - 패키지
-  getGamePackages() {
-    return http.get('/admin/game/packages')
+  // 게임 - 씬 팩
+  getGameScenePacks() {
+    return http.get('/admin/game/scene-packs')
   },
-  createGamePackage(body: object) {
-    return http.post('/admin/game/packages', body)
+  createGameScenePack(body: object) {
+    return http.post('/admin/game/scene-packs', body)
   },
-  updateGamePackage(id: number, body: object) {
-    return http.patch(`/admin/game/packages/${id}`, body)
+  updateGameScenePack(id: number, body: object) {
+    return http.patch(`/admin/game/scene-packs/${id}`, body)
   },
-  deleteGamePackage(id: number) {
-    return http.delete(`/admin/game/packages/${id}`)
+  deleteGameScenePack(id: number) {
+    return http.delete(`/admin/game/scene-packs/${id}`)
   },
-  addPackageImage(packageId: number, body: { imageUrl: string; sortOrder: number }) {
-    return http.post(`/admin/game/packages/${packageId}/images`, body)
+  addScenePackImage(packId: number, body: { imageUrl: string; sortOrder: number }) {
+    return http.post(`/admin/game/scene-packs/${packId}/images`, body)
   },
-  removePackageImage(packageId: number, imageId: number) {
-    return http.delete(`/admin/game/packages/${packageId}/images/${imageId}`)
+  removeScenePackImage(packId: number, imageId: number) {
+    return http.delete(`/admin/game/scene-packs/${packId}/images/${imageId}`)
   },
 
   // 게임 - 번들

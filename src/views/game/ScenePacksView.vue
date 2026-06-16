@@ -3,12 +3,12 @@ import { ref, onMounted } from 'vue'
 import api from '@/network'
 
 interface PackageImage { id: number; imageUrl: string; sortOrder: number }
-interface Package {
+interface ScenePack {
   id: number; name: string; description: string | null; coinPrice: number
   type: 'NORMAL' | 'BOSS'; contentCategory: 'GENERAL' | 'ADULT'; isDefault: boolean; isActive: boolean; images: PackageImage[]
 }
 
-const packages = ref<Package[]>([])
+const packs = ref<ScenePack[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -16,12 +16,12 @@ const saving = ref(false)
 const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS', contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT', isDefault: false, isActive: true })
 
 const uploadingImg = ref(false)
-const selectedPkg = ref<Package | null>(null)
+const selectedPack = ref<ScenePack | null>(null)
 const showImgPanel = ref(false)
 
 async function load() {
   loading.value = true
-  try { const res = await api.getGamePackages(); packages.value = res.data }
+  try { const res = await api.getGameScenePacks(); packs.value = res.data }
   finally { loading.value = false }
 }
 onMounted(load)
@@ -31,7 +31,7 @@ function openCreate() {
   form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL', contentCategory: 'GENERAL', isDefault: false, isActive: true }
   showModal.value = true
 }
-function openEdit(p: Package) {
+function openEdit(p: ScenePack) {
   isEdit.value = true
   form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type, contentCategory: p.contentCategory, isDefault: p.isDefault, isActive: p.isActive }
   showModal.value = true
@@ -41,38 +41,38 @@ async function save() {
   saving.value = true
   try {
     const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
-    if (isEdit.value) await api.updateGamePackage(form.value.id, body)
-    else await api.createGamePackage(body)
+    if (isEdit.value) await api.updateGameScenePack(form.value.id, body)
+    else await api.createGameScenePack(body)
     showModal.value = false; await load()
   } catch (e: any) { alert(e?.response?.data?.message ?? '저장 실패') }
   finally { saving.value = false }
 }
 
-async function remove(p: Package) {
-  if (!confirm(`"${p.name}" 패키지를 삭제하시겠습니까?`)) return
-  await api.deleteGamePackage(p.id); await load()
+async function remove(p: ScenePack) {
+  if (!confirm(`"${p.name}" 씬 팩을 삭제하시겠습니까?`)) return
+  await api.deleteGameScenePack(p.id); await load()
 }
 
-function openImages(p: Package) { selectedPkg.value = p; showImgPanel.value = true }
+function openImages(p: ScenePack) { selectedPack.value = p; showImgPanel.value = true }
 
-async function uploadImage(pkg: Package, e: Event) {
+async function uploadImage(pack: ScenePack, e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   uploadingImg.value = true
   try {
     const { data } = await api.uploadImage(file)
-    const sortOrder = pkg.images.length
-    await api.addPackageImage(pkg.id, { imageUrl: data.url, sortOrder })
+    const sortOrder = pack.images.length
+    await api.addScenePackImage(pack.id, { imageUrl: data.url, sortOrder })
     await load()
-    selectedPkg.value = packages.value.find(p => p.id === pkg.id) ?? null
+    selectedPack.value = packs.value.find(p => p.id === pack.id) ?? null
   } finally { uploadingImg.value = false; (e.target as HTMLInputElement).value = '' }
 }
 
-async function removeImage(pkg: Package, imgId: number) {
+async function removeImage(pack: ScenePack, imgId: number) {
   if (!confirm('이미지를 삭제하시겠습니까?')) return
-  await api.removePackageImage(pkg.id, imgId)
+  await api.removeScenePackImage(pack.id, imgId)
   await load()
-  selectedPkg.value = packages.value.find(p => p.id === pkg.id) ?? null
+  selectedPack.value = packs.value.find(p => p.id === pack.id) ?? null
 }
 </script>
 
@@ -80,7 +80,7 @@ async function removeImage(pkg: Package, imgId: number) {
   <div class="layout">
     <div class="list-area">
       <div class="toolbar">
-        <button class="btn-primary" @click="openCreate">+ 패키지 추가</button>
+        <button class="btn-primary" @click="openCreate">+ 씬 팩 추가</button>
       </div>
       <div v-if="loading" class="loading">불러오는 중...</div>
       <div v-else class="table-wrap">
@@ -89,7 +89,7 @@ async function removeImage(pkg: Package, imgId: number) {
             <tr><th>이름</th><th>타입</th><th>카테고리</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
           </thead>
           <tbody>
-            <tr v-for="p in packages" :key="p.id" :class="{ selected: selectedPkg?.id === p.id }">
+            <tr v-for="p in packs" :key="p.id" :class="{ selected: selectedPack?.id === p.id }">
               <td>{{ p.name }}</td>
               <td><span class="badge" :class="p.type === 'BOSS' ? 'badge-red' : 'badge-blue'">{{ p.type }}</span></td>
               <td><span class="badge" :class="p.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ p.contentCategory === 'ADULT' ? '성인' : '일반' }}</span></td>
@@ -105,46 +105,46 @@ async function removeImage(pkg: Package, imgId: number) {
                 <button class="btn-sm btn-danger" @click="remove(p)">삭제</button>
               </td>
             </tr>
-            <tr v-if="!packages.length"><td colspan="7" class="empty">패키지가 없습니다.</td></tr>
+            <tr v-if="!packs.length"><td colspan="7" class="empty">씬 팩이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
     <!-- 이미지 패널 -->
-    <div v-if="showImgPanel && selectedPkg" class="img-panel">
+    <div v-if="showImgPanel && selectedPack" class="img-panel">
       <div class="panel-header">
-        <span>{{ selectedPkg.name }} 이미지 관리</span>
+        <span>{{ selectedPack.name }} 이미지 관리</span>
         <button class="btn-xs" @click="showImgPanel = false">✕</button>
       </div>
-      <p class="panel-hint" v-if="selectedPkg.type === 'BOSS'">BOSS: sort_order 순서가 피해 단계입니다 (0=풀체력, 마지막=사망)</p>
+      <p class="panel-hint" v-if="selectedPack.type === 'BOSS'">BOSS: sort_order 순서가 피해 단계입니다 (0=풀체력, 마지막=사망)</p>
       <div class="img-grid">
-        <div v-for="img in selectedPkg.images.slice().sort((a,b)=>a.sortOrder-b.sortOrder)" :key="img.id" class="img-card">
+        <div v-for="img in selectedPack.images.slice().sort((a,b)=>a.sortOrder-b.sortOrder)" :key="img.id" class="img-card">
           <img :src="img.imageUrl" alt="" />
           <span class="img-order">{{ img.sortOrder }}</span>
-          <button class="img-del" @click="removeImage(selectedPkg!, img.id)">✕</button>
+          <button class="img-del" @click="removeImage(selectedPack!, img.id)">✕</button>
         </div>
       </div>
       <label class="upload-btn" :class="{ disabled: uploadingImg }">
         {{ uploadingImg ? '업로드 중...' : '+ 이미지 추가' }}
-        <input type="file" accept="image/*" hidden :disabled="uploadingImg" @change="uploadImage(selectedPkg!, $event)" />
+        <input type="file" accept="image/*" hidden :disabled="uploadingImg" @change="uploadImage(selectedPack!, $event)" />
       </label>
     </div>
   </div>
 
   <div v-if="showModal" class="overlay" @click.self="showModal = false">
     <div class="modal">
-      <h3>{{ isEdit ? '패키지 편집' : '패키지 추가' }}</h3>
+      <h3>{{ isEdit ? '씬 팩 편집' : '씬 팩 추가' }}</h3>
       <label>이름 *</label>
-      <input v-model="form.name" type="text" placeholder="패키지 이름" />
+      <input v-model="form.name" type="text" placeholder="씬 팩 이름" />
       <label>설명</label>
       <input v-model="form.description" type="text" />
       <div class="form-row">
         <div class="form-col">
           <label>타입</label>
           <select v-model="form.type" :disabled="isEdit">
-            <option value="NORMAL">NORMAL</option>
-            <option value="BOSS">BOSS</option>
+            <option value="NORMAL">NORMAL (스테이지 배경)</option>
+            <option value="BOSS">BOSS (보스 몬스터)</option>
           </select>
         </div>
         <div class="form-col">
@@ -160,7 +160,7 @@ async function removeImage(pkg: Package, imgId: number) {
         </div>
       </div>
       <div class="check-row">
-        <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 패키지 <span class="hint">(미보유 유저 fallback)</span></label>
+        <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 팩 <span class="hint">(미보유 유저 fallback)</span></label>
         <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성</label>
       </div>
       <div class="modal-actions">
