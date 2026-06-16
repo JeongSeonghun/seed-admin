@@ -19,6 +19,7 @@ interface Stage {
   rewardMyImageId?: number | null
   rewardMyImageRate?: number
   normalPackageIds?: number[] | null
+  bossPackageId?: number | null
 }
 
 const stages = ref<Stage[]>([])
@@ -35,6 +36,7 @@ const form = ref({
   rewardMyImageId: null as number | null,
   rewardMyImageRate: 0.3,
   normalPackageIdsText: '',
+  bossPackageId: null as number | null,
 })
 
 const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
@@ -48,7 +50,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3, normalPackageIdsText: '' }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
   showModal.value = true
 }
 
@@ -61,6 +63,7 @@ function openEdit(s: Stage) {
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
     rewardPackageId: s.rewardPackageId ?? null, rewardMyImageId: s.rewardMyImageId ?? null, rewardMyImageRate: s.rewardMyImageRate ?? 0.3,
     normalPackageIdsText: s.normalPackageIds?.join(', ') ?? '',
+    bossPackageId: s.bossPackageId ?? null,
   }
   showModal.value = true
 }
@@ -85,6 +88,7 @@ async function save() {
       rewardMyImageRate: form.value.rewardMyImageRate,
     }
     const normalPackageIds = form.value.stageType === 'NORMAL' ? parsePackageIds(form.value.normalPackageIdsText) : null
+    const bossPackageId = form.value.stageType === 'BOSS' ? (form.value.bossPackageId || null) : null
     if (isEdit.value) {
       await api.updateGameStage(form.value.id, {
         stageType: form.value.stageType,
@@ -95,6 +99,7 @@ async function save() {
         clearCoin: form.value.clearCoin,
         ...rewardFields,
         normalPackageIds,
+        bossPackageId,
       })
     } else {
       await api.createGameStage({
@@ -108,6 +113,7 @@ async function save() {
         clearCoin: form.value.clearCoin,
         ...rewardFields,
         normalPackageIds,
+        bossPackageId,
       })
     }
     showModal.value = false
@@ -228,6 +234,12 @@ function cfgSummary(s: Stage) {
           <div class="form-col">
             <label>배경 패키지 ID <span class="label-sub">(쉼표 구분, 미설정 시 보유 패키지 랜덤)</span></label>
             <input v-model="form.normalPackageIdsText" type="text" placeholder="예: 1, 2, 3" />
+          </div>
+        </div>
+        <div v-if="form.stageType === 'BOSS'" class="form-row">
+          <div class="form-col">
+            <label>보스 배경 패키지 ID <span class="label-sub">(미설정 시 보유 BOSS 패키지 랜덤)</span></label>
+            <input v-model.number="form.bossPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
           </div>
         </div>
 
