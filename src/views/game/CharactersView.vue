@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/network'
 
-interface MyImage {
+interface Character {
   id: number
   name: string
   normalUrl: string
@@ -15,7 +15,7 @@ interface MyImage {
   isActive: boolean
 }
 
-const images = ref<MyImage[]>([])
+const characters = ref<Character[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -37,7 +37,7 @@ const form = ref({
 
 async function load() {
   loading.value = true
-  try { const res = await api.getGameMyImages(); images.value = res.data }
+  try { const res = await api.getGameCharacters(); characters.value = res.data }
   finally { loading.value = false }
 }
 onMounted(load)
@@ -48,9 +48,9 @@ function openCreate() {
   showModal.value = true
 }
 
-function openEdit(img: MyImage) {
+function openEdit(c: Character) {
   isEdit.value = true
-  form.value = { id: img.id, name: img.name, normalUrl: img.normalUrl, hitUrl: img.hitUrl, criticalUrl: img.criticalUrl, deadUrl: img.deadUrl, coinPrice: img.coinPrice, contentCategory: img.contentCategory, isDefault: img.isDefault, isActive: img.isActive }
+  form.value = { id: c.id, name: c.name, normalUrl: c.normalUrl, hitUrl: c.hitUrl, criticalUrl: c.criticalUrl, deadUrl: c.deadUrl, coinPrice: c.coinPrice, contentCategory: c.contentCategory, isDefault: c.isDefault, isActive: c.isActive }
   showModal.value = true
 }
 
@@ -71,17 +71,17 @@ async function save() {
   saving.value = true
   try {
     const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice: form.value.coinPrice ?? undefined, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
-    if (isEdit.value) await api.updateGameMyImage(form.value.id, body)
-    else await api.createGameMyImage(body)
+    if (isEdit.value) await api.updateGameCharacter(form.value.id, body)
+    else await api.createGameCharacter(body)
     showModal.value = false
     await load()
   } catch (e: any) { alert(e?.response?.data?.message ?? '저장 실패') }
   finally { saving.value = false }
 }
 
-async function remove(img: MyImage) {
-  if (!confirm(`"${img.name}" 이미지를 삭제하시겠습니까?`)) return
-  await api.deleteGameMyImage(img.id)
+async function remove(c: Character) {
+  if (!confirm(`"${c.name}" 캐릭터를 삭제하시겠습니까?`)) return
+  await api.deleteGameCharacter(c.id)
   await load()
 }
 </script>
@@ -94,28 +94,28 @@ async function remove(img: MyImage) {
 
     <div v-if="loading" class="loading">불러오는 중...</div>
     <div v-else class="grid">
-      <div v-for="img in images" :key="img.id" class="card">
+      <div v-for="c in characters" :key="c.id" class="card">
         <div class="card-header">
-          <span class="card-name">{{ img.name }}</span>
+          <span class="card-name">{{ c.name }}</span>
           <div class="badges">
-            <span v-if="img.isDefault" class="badge badge-purple">기본</span>
-            <span v-if="img.coinPrice !== null" class="badge badge-yellow">{{ img.coinPrice }}코인</span>
-            <span class="badge" :class="img.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ img.contentCategory === 'ADULT' ? '성인' : '일반' }}</span>
-            <span class="badge" :class="img.isActive ? 'badge-green' : 'badge-gray'">{{ img.isActive ? '활성' : '비활성' }}</span>
+            <span v-if="c.isDefault" class="badge badge-purple">기본</span>
+            <span v-if="c.coinPrice !== null" class="badge badge-yellow">{{ c.coinPrice }}코인</span>
+            <span class="badge" :class="c.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ c.contentCategory === 'ADULT' ? '성인' : '일반' }}</span>
+            <span class="badge" :class="c.isActive ? 'badge-green' : 'badge-gray'">{{ c.isActive ? '활성' : '비활성' }}</span>
           </div>
         </div>
         <div class="img-row">
           <div class="img-item" v-for="(label, key) in { normalUrl: '기본', hitUrl: '피격', criticalUrl: '치명', deadUrl: '사망' }" :key="key">
-            <img :src="img[key as keyof MyImage] as string" alt="" />
+            <img :src="c[key as keyof Character] as string" alt="" />
             <span class="img-label">{{ label }}</span>
           </div>
         </div>
         <div class="card-actions">
-          <button class="btn-sm" @click="openEdit(img)">편집</button>
-          <button class="btn-sm btn-danger" @click="remove(img)">삭제</button>
+          <button class="btn-sm" @click="openEdit(c)">편집</button>
+          <button class="btn-sm btn-danger" @click="remove(c)">삭제</button>
         </div>
       </div>
-      <div v-if="!images.length" class="empty">캐릭터 이미지가 없습니다.</div>
+      <div v-if="!characters.length" class="empty">캐릭터 이미지가 없습니다.</div>
     </div>
 
     <div v-if="showModal" class="overlay" @click.self="showModal = false">

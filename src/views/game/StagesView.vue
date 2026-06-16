@@ -16,8 +16,8 @@ interface Stage {
   levelConfigs: LevelConfig[]
   title?: StageTitle | null
   rewardPackageId?: number | null
-  rewardMyImageId?: number | null
-  rewardMyImageRate?: number
+  rewardCharacterId?: number | null
+  characterDropRate?: number
   normalPackageIds?: number[] | null
   bossPackageId?: number | null
 }
@@ -33,8 +33,8 @@ const form = ref({
   titleKo: '', titleEn: '',
   expPerCorrect: 5, clearExp: 50, clearCoin: 10,
   rewardPackageId: null as number | null,
-  rewardMyImageId: null as number | null,
-  rewardMyImageRate: 0.3,
+  rewardCharacterId: null as number | null,
+  characterDropRate: 0.3,
   normalPackageIdsText: '',
   bossPackageId: null as number | null,
 })
@@ -50,7 +50,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardMyImageId: null, rewardMyImageRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
+  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
   showModal.value = true
 }
 
@@ -61,7 +61,7 @@ function openEdit(s: Stage) {
     levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
     titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
-    rewardPackageId: s.rewardPackageId ?? null, rewardMyImageId: s.rewardMyImageId ?? null, rewardMyImageRate: s.rewardMyImageRate ?? 0.3,
+    rewardPackageId: s.rewardPackageId ?? null, rewardCharacterId: s.rewardCharacterId ?? null, characterDropRate: s.characterDropRate ?? 0.3,
     normalPackageIdsText: s.normalPackageIds?.join(', ') ?? '',
     bossPackageId: s.bossPackageId ?? null,
   }
@@ -84,8 +84,8 @@ async function save() {
     const title = form.value.titleKo ? { ko: form.value.titleKo, ...(form.value.titleEn ? { en: form.value.titleEn } : {}) } : null
     const rewardFields = {
       rewardPackageId: form.value.rewardPackageId || null,
-      rewardMyImageId: form.value.rewardMyImageId || null,
-      rewardMyImageRate: form.value.rewardMyImageRate,
+      rewardCharacterId: form.value.rewardCharacterId || null,
+      characterDropRate: form.value.characterDropRate,
     }
     const normalPackageIds = form.value.stageType === 'NORMAL' ? parsePackageIds(form.value.normalPackageIdsText) : null
     const bossPackageId = form.value.stageType === 'BOSS' ? (form.value.bossPackageId || null) : null
@@ -251,11 +251,11 @@ function cfgSummary(s: Stage) {
           </div>
           <div class="form-col">
             <label>보상 캐릭터 ID <span class="label-sub">(BOSS)</span></label>
-            <input v-model.number="form.rewardMyImageId" type="number" min="1" placeholder="없으면 비워두세요" />
+            <input v-model.number="form.rewardCharacterId" type="number" min="1" placeholder="없으면 비워두세요" />
           </div>
           <div class="form-col">
             <label>캐릭터 획득 확률 <span class="label-sub">(0~1)</span></label>
-            <input v-model.number="form.rewardMyImageRate" type="number" min="0" max="1" step="0.05" />
+            <input v-model.number="form.characterDropRate" type="number" min="0" max="1" step="0.05" />
           </div>
         </div>
         <div class="modal-actions">

@@ -251,18 +251,18 @@ export default {
     return http.delete(`/admin/game/bundles/${id}`)
   },
 
-  // 게임 - 캐릭터 이미지
-  getGameMyImages() {
-    return http.get('/admin/game/my-images')
+  // 게임 - 캐릭터
+  getGameCharacters() {
+    return http.get('/admin/game/characters')
   },
-  createGameMyImage(body: object) {
-    return http.post('/admin/game/my-images', body)
+  createGameCharacter(body: object) {
+    return http.post('/admin/game/characters', body)
   },
-  updateGameMyImage(id: number, body: object) {
-    return http.patch(`/admin/game/my-images/${id}`, body)
+  updateGameCharacter(id: number, body: object) {
+    return http.patch(`/admin/game/characters/${id}`, body)
   },
-  deleteGameMyImage(id: number) {
-    return http.delete(`/admin/game/my-images/${id}`)
+  deleteGameCharacter(id: number) {
+    return http.delete(`/admin/game/characters/${id}`)
   },
 
   // 앱 설정

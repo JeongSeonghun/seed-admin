@@ -88,10 +88,10 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '번들 관리' },
         },
         {
-          path: 'game/my-images',
-          name: 'game-my-images',
-          component: () => import('@/views/game/MyImagesView.vue'),
-          meta: { requiresAuth: true, title: '캐릭터 이미지 관리' },
+          path: 'game/characters',
+          name: 'game-characters',
+          component: () => import('@/views/game/CharactersView.vue'),
+          meta: { requiresAuth: true, title: '캐릭터 관리' },
         },
         {
           path: 'game/app-config',
