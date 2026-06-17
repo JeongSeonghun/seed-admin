@@ -273,6 +273,20 @@ export default {
     return http.patch(`/admin/game/app-configs/${key}`, { value })
   },
 
+  // 푸시 알림
+  adminPushSend(body: { userIds: number[]; title: string; body: string; appId?: string; data?: Record<string, string> }) {
+    return http.post('/admin/push/send', body)
+  },
+  adminPushBroadcast(body: { title: string; body: string; appId?: string; data?: Record<string, string> }) {
+    return http.post('/admin/push/broadcast', body)
+  },
+  adminGetPushLogs(limit?: number) {
+    return http.get('/admin/push/logs', { params: limit ? { limit } : undefined })
+  },
+  adminGetPushTokens(appId?: string) {
+    return http.get('/admin/push/tokens', { params: appId ? { appId } : undefined })
+  },
+
   // 이미지 업로드
   uploadImage(file: File) {
     const form = new FormData()

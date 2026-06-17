@@ -58,6 +58,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '버전 관리' },
         },
         {
+          path: 'push',
+          name: 'push',
+          component: () => import('@/views/PushView.vue'),
+          meta: { requiresAuth: true, title: '푸시 알림' },
+        },
+        {
           path: 'my',
           name: 'my',
           component: () => import('@/views/MyPageView.vue'),
