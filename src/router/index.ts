@@ -105,6 +105,12 @@ const router = createRouter({
           component: () => import('@/views/game/AppConfigView.vue'),
           meta: { requiresAuth: true, title: '앱 설정' },
         },
+        {
+          path: 'smartfarm',
+          name: 'smartfarm',
+          component: () => import('@/views/SmartfarmView.vue'),
+          meta: { requiresAuth: true, title: '스마트팜' },
+        },
       ],
     },
     {

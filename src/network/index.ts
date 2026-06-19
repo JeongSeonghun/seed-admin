@@ -295,4 +295,42 @@ export default {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  // 스마트팜 - 디바이스
+  getSmartfarmDevices() {
+    return http.get('/admin/smartfarm/devices')
+  },
+  createSmartfarmDevice(body: { name: string; location?: string }) {
+    return http.post('/admin/smartfarm/devices', body)
+  },
+
+  // 스마트팜 - 센서 readings
+  getSmartfarmReadings(deviceId: number, params?: { from?: string; to?: string; type?: string }) {
+    return http.get(`/admin/smartfarm/devices/${deviceId}/readings`, { params })
+  },
+
+  // 스마트팜 - 명령
+  getSmartfarmCommands(deviceId: number) {
+    return http.get(`/admin/smartfarm/devices/${deviceId}/commands`)
+  },
+  createSmartfarmCommand(deviceId: number, body: { target: string; action: string }) {
+    return http.post(`/admin/smartfarm/devices/${deviceId}/commands`, body)
+  },
+
+  // 스마트팜 - 규칙
+  getSmartfarmRules(deviceId: number) {
+    return http.get(`/admin/smartfarm/devices/${deviceId}/rules`)
+  },
+  createSmartfarmRule(deviceId: number, body: {
+    name?: string; sensorType: string; operator: string
+    threshold: number; target: string; action: string; cooldownMinutes?: number
+  }) {
+    return http.post(`/admin/smartfarm/devices/${deviceId}/rules`, body)
+  },
+  updateSmartfarmRule(ruleId: number, body: { name?: string; enabled?: boolean; threshold?: number; cooldownMinutes?: number }) {
+    return http.patch(`/admin/smartfarm/rules/${ruleId}`, body)
+  },
+  deleteSmartfarmRule(ruleId: number) {
+    return http.delete(`/admin/smartfarm/rules/${ruleId}`)
+  },
 }

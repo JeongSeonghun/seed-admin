@@ -37,6 +37,10 @@ async function logout() {
         <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>
         <div class="nav-divider" />
         <router-link :to="{ name: 'push' }" class="nav-item">푸시 알림</router-link>
+        <div class="nav-divider" />
+        <div class="nav-section">스마트팜</div>
+        <router-link :to="{ name: 'smartfarm' }" class="nav-item nav-sub">디바이스 관리</router-link>
+        <div class="nav-divider" />
         <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
     </aside>
