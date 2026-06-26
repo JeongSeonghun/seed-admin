@@ -54,8 +54,9 @@ async function loadDevices() {
   try {
     const res = await api.getSmartfarmDevices()
     devices.value = res.data
-    if (devices.value.length && !selectedDevice.value) {
-      selectDevice(devices.value[0])
+    const first = devices.value[0]
+    if (first && !selectedDevice.value) {
+      selectDevice(first)
     }
   } catch {
     alert('디바이스 목록을 불러오지 못했습니다.')
