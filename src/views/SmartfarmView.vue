@@ -14,6 +14,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 interface Device {
   id: number; name: string; location: string | null
   apiKey: string; status: 'online' | 'offline'; lastSeenAt: string | null; createdAt: string
+  bluetoothStatus: 'connected' | 'disconnected' | null
+  lastReadingAt: string | null
 }
 interface Reading {
   id: number; type: string; value: number; createdAt: string
@@ -294,6 +296,15 @@ function fmtDate(v: string | null) {
   return new Date(v).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+// 기본 센서 주기(60초)보다 한참 오래됐으면 "online"이어도 데이터가 안 들어오는 상태로 간주
+const READING_STALE_MS = 5 * 60 * 1000
+
+function readingAgeLabel(v: string | null): { text: string; stale: boolean } {
+  if (!v) return { text: '데이터 없음', stale: true }
+  const ageMs = Date.now() - new Date(v).getTime()
+  return { text: `${fmtDate(v)} (${Math.round(ageMs / 60000)}분 전)`, stale: ageMs > READING_STALE_MS }
+}
+
 const OPERATOR_LABEL: Record<string, string> = { lt: '<', gt: '>', lte: '≤', gte: '≥' }
 const STATUS_COLOR: Record<string, string> = {
   pending: '#ed8936', sent: '#4a6cf7', done: '#48bb78', failed: '#e53e3e',
@@ -327,7 +338,17 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
       <span class="di-status" :class="selectedDevice.status">
         {{ selectedDevice.status === 'online' ? '온라인' : '오프라인' }}
       </span>
+      <span
+        class="di-status"
+        :class="selectedDevice.bluetoothStatus ?? 'unknown'"
+      >
+        블루투스: {{ selectedDevice.bluetoothStatus === 'connected' ? '연결됨'
+          : selectedDevice.bluetoothStatus === 'disconnected' ? '끊김' : '정보없음' }}
+      </span>
       <span class="di-seen">마지막 확인: {{ fmtDate(selectedDevice.lastSeenAt) }}</span>
+      <span class="di-seen" :class="{ stale: readingAgeLabel(selectedDevice.lastReadingAt).stale }">
+        마지막 데이터: {{ readingAgeLabel(selectedDevice.lastReadingAt).text }}
+      </span>
       <span class="di-key">API Key: <code>{{ selectedDevice.apiKey }}</code></span>
     </div>
 
@@ -578,9 +599,13 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
 .di-name { font-weight: 700; color: #1a1a2e; font-size: 0.95rem; }
 .di-loc { color: #888; }
 .di-status { padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
-.di-status.online { background: #f0fff4; color: #276749; }
-.di-status.offline { background: #fff5f5; color: #c53030; }
+.di-status.online,
+.di-status.connected { background: #f0fff4; color: #276749; }
+.di-status.offline,
+.di-status.disconnected { background: #fff5f5; color: #c53030; }
+.di-status.unknown { background: #f7f8fa; color: #888; }
 .di-seen { color: #aaa; }
+.di-seen.stale { color: #c53030; font-weight: 600; }
 .di-key { color: #888; margin-left: auto; font-size: 0.78rem; }
 .di-key code { background: #f0f2f5; padding: 0.1rem 0.4rem; border-radius: 4px; font-family: monospace; color: #555; }
 
