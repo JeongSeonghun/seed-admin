@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, PointElement, LineElement,
+  Title, Tooltip, Legend, Filler,
+} from 'chart.js'
 import api from '@/network'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 // ── 타입 ────────────────────────────────────────────────────────
 interface Device {
@@ -173,6 +181,113 @@ async function deleteRule(rule: Rule) {
   }
 }
 
+// ── 차트 상태 ─────────────────────────────────────────────────────
+type ViewMode = 'table' | 'chart'
+type ChartInterval = 'hour' | 'day'
+type ChartPeriod = 'today' | '7d' | '30d' | 'custom'
+
+interface ChartRow {
+  bucket: string; type: string
+  avg: string; min: string; max: string; count: string
+}
+
+const viewMode = ref<ViewMode>('table')
+const chartInterval = ref<ChartInterval>('hour')
+const chartPeriod = ref<ChartPeriod>('7d')
+const chartCustomFrom = ref('')
+const chartCustomTo = ref('')
+const chartRows = ref<ChartRow[]>([])
+const chartLoading = ref(false)
+
+function periodRange() {
+  const now = new Date()
+  if (chartPeriod.value === 'today') {
+    const from = new Date(now); from.setHours(0, 0, 0, 0)
+    return { from: from.toISOString(), to: now.toISOString() }
+  }
+  if (chartPeriod.value === '7d') {
+    const from = new Date(now); from.setDate(from.getDate() - 7); from.setHours(0, 0, 0, 0)
+    return { from: from.toISOString(), to: now.toISOString() }
+  }
+  if (chartPeriod.value === '30d') {
+    const from = new Date(now); from.setDate(from.getDate() - 30); from.setHours(0, 0, 0, 0)
+    return { from: from.toISOString(), to: now.toISOString() }
+  }
+  return {
+    from: chartCustomFrom.value ? new Date(chartCustomFrom.value).toISOString() : '',
+    to:   chartCustomTo.value   ? new Date(chartCustomTo.value + 'T23:59:59').toISOString() : '',
+  }
+}
+
+async function loadChart() {
+  if (!selectedDevice.value) return
+  chartLoading.value = true
+  try {
+    const { from, to } = periodRange()
+    const res = await api.getSmartfarmReadingsChart(selectedDevice.value.id, {
+      interval: chartInterval.value, from, to,
+    })
+    chartRows.value = res.data
+  } catch {
+    alert('차트 데이터를 불러오지 못했습니다.')
+  } finally {
+    chartLoading.value = false
+  }
+}
+
+watch(viewMode, (v) => { if (v === 'chart') loadChart() })
+
+function fmtBucket(bucket: string) {
+  const d = new Date(bucket)
+  if (chartInterval.value === 'day') {
+    return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+  }
+  return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+const SENSOR_CONFIGS = [
+  { type: 'temperature', label: '온도(°C)', color: '#f56565' },
+  { type: 'humidity',    label: '습도(%)',   color: '#4a6cf7' },
+  { type: 'light',       label: '조도',      color: '#48bb78' },
+] as const
+
+const chartDatasets = computed(() =>
+  SENSOR_CONFIGS.map(({ type, label, color }) => {
+    const rows = chartRows.value
+      .filter(r => r.type === type)
+      .sort((a, b) => new Date(a.bucket).getTime() - new Date(b.bucket).getTime())
+    return {
+      type, label, color,
+      data: {
+        labels: rows.map(r => fmtBucket(r.bucket)),
+        datasets: [{
+          label,
+          data: rows.map(r => parseFloat(r.avg)),
+          borderColor: color,
+          backgroundColor: color + '22',
+          fill: true,
+          tension: 0.35,
+          pointRadius: rows.length > 60 ? 0 : 3,
+          borderWidth: 2,
+        }],
+      },
+    }
+  })
+)
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: { mode: 'index' as const, intersect: false },
+  },
+  scales: {
+    x: { grid: { color: '#f0f2f5' }, ticks: { maxRotation: 45, font: { size: 10 } } },
+    y: { grid: { color: '#f0f2f5' }, ticks: { font: { size: 11 } } },
+  },
+}
+
 // ── 포맷 유틸 ─────────────────────────────────────────────────────
 function fmtDate(v: string | null) {
   if (!v) return '-'
@@ -233,19 +348,66 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
 
       <!-- 센서 데이터 탭 -->
       <div v-else-if="activeTab === 'readings'">
-        <table class="tbl" v-if="readings.length">
-          <thead>
-            <tr><th>시각</th><th>타입</th><th>값</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in readings" :key="r.id">
-              <td>{{ fmtDate(r.createdAt) }}</td>
-              <td>{{ TYPE_LABEL[r.type] ?? r.type }}</td>
-              <td class="val">{{ r.value }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else class="empty-state">센서 데이터가 없습니다.</div>
+        <!-- 테이블/차트 토글 -->
+        <div class="readings-toolbar">
+          <div class="view-toggle">
+            <button :class="{ active: viewMode === 'table' }" @click="viewMode = 'table'">테이블</button>
+            <button :class="{ active: viewMode === 'chart' }" @click="viewMode = 'chart'">차트</button>
+          </div>
+
+          <!-- 차트 모드 컨트롤 -->
+          <template v-if="viewMode === 'chart'">
+            <div class="period-btns">
+              <button :class="{ active: chartPeriod === 'today' }" @click="chartPeriod = 'today'">오늘</button>
+              <button :class="{ active: chartPeriod === '7d' }"   @click="chartPeriod = '7d'">7일</button>
+              <button :class="{ active: chartPeriod === '30d' }"  @click="chartPeriod = '30d'">30일</button>
+              <button :class="{ active: chartPeriod === 'custom' }" @click="chartPeriod = 'custom'">직접</button>
+            </div>
+            <template v-if="chartPeriod === 'custom'">
+              <input type="date" v-model="chartCustomFrom" class="date-input" />
+              <span class="date-sep">~</span>
+              <input type="date" v-model="chartCustomTo" class="date-input" />
+            </template>
+            <div class="interval-btns">
+              <button :class="{ active: chartInterval === 'hour' }" @click="chartInterval = 'hour'">시간별</button>
+              <button :class="{ active: chartInterval === 'day' }"  @click="chartInterval = 'day'">일별</button>
+            </div>
+            <button class="btn-primary btn-sm" @click="loadChart" :disabled="chartLoading">
+              {{ chartLoading ? '...' : '조회' }}
+            </button>
+          </template>
+        </div>
+
+        <!-- 테이블 뷰 -->
+        <template v-if="viewMode === 'table'">
+          <table class="tbl" v-if="readings.length">
+            <thead>
+              <tr><th>시각</th><th>타입</th><th>값</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in readings" :key="r.id">
+                <td>{{ fmtDate(r.createdAt) }}</td>
+                <td>{{ TYPE_LABEL[r.type] ?? r.type }}</td>
+                <td class="val">{{ r.value }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state">센서 데이터가 없습니다.</div>
+        </template>
+
+        <!-- 차트 뷰 -->
+        <template v-else>
+          <div v-if="chartLoading" class="empty-state">불러오는 중...</div>
+          <div v-else-if="!chartRows.length" class="empty-state">데이터가 없습니다. 기간을 선택 후 조회하세요.</div>
+          <div v-else class="chart-grid">
+            <div v-for="ds in chartDatasets" :key="ds.type" class="chart-card">
+              <div class="chart-card-title" :style="{ color: ds.color }">{{ ds.label }}</div>
+              <div class="chart-wrap">
+                <Line :data="ds.data" :options="chartOptions" />
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- 제어 명령 탭 -->
@@ -464,6 +626,35 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
   border: none; cursor: pointer; background: #e2e8f0; color: #888;
 }
 .toggle.on { background: #48bb78; color: white; }
+
+/* 센서 데이터 차트 */
+.readings-toolbar {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; border-bottom: 1px solid #f0f2f5;
+}
+.view-toggle, .period-btns, .interval-btns {
+  display: flex; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;
+}
+.view-toggle button, .period-btns button, .interval-btns button {
+  padding: 0.3rem 0.75rem; border: none; background: #fff;
+  cursor: pointer; font-size: 0.8rem; color: #666;
+}
+.view-toggle button.active, .period-btns button.active, .interval-btns button.active {
+  background: #4a6cf7; color: #fff; font-weight: 600;
+}
+.interval-btns { margin-left: 0.25rem; }
+.date-input {
+  padding: 0.3rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px;
+  font-size: 0.8rem; color: #333;
+}
+.date-sep { color: #aaa; font-size: 0.8rem; }
+.btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+
+.chart-grid { display: flex; flex-direction: column; gap: 0; }
+.chart-card { border-bottom: 1px solid #f0f2f5; padding: 1rem 1.25rem 1.25rem; }
+.chart-card:last-child { border-bottom: none; }
+.chart-card-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+.chart-wrap { height: 180px; }
 
 /* 공통 */
 .empty-state { text-align: center; color: #aaa; padding: 3rem 1rem; }

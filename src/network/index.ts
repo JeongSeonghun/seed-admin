@@ -308,6 +308,15 @@ export default {
   getSmartfarmReadings(deviceId: number, params?: { from?: string; to?: string; type?: string }) {
     return http.get(`/admin/smartfarm/devices/${deviceId}/readings`, { params })
   },
+  getSmartfarmReadingsChart(
+    deviceId: number,
+    params: { interval?: 'hour' | 'day'; from?: string; to?: string; type?: string },
+  ) {
+    return http.get<{ bucket: string; type: string; avg: string; min: string; max: string; count: string }[]>(
+      `/admin/smartfarm/devices/${deviceId}/readings/chart`,
+      { params },
+    )
+  },
 
   // 스마트팜 - 명령
   getSmartfarmCommands(deviceId: number) {
