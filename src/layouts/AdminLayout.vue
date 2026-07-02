@@ -41,6 +41,11 @@ async function logout() {
         <div class="nav-section">스마트팜</div>
         <router-link :to="{ name: 'smartfarm' }" class="nav-item nav-sub">디바이스 관리</router-link>
         <div class="nav-divider" />
+        <div class="nav-section">AI Agent</div>
+        <router-link :to="{ name: 'agent' }" class="nav-item nav-sub">Agent 콘솔</router-link>
+        <router-link :to="{ name: 'agent-prompts' }" class="nav-item nav-sub">프롬프트 관리</router-link>
+        <router-link :to="{ name: 'agent-logs' }" class="nav-item nav-sub">로그 조회</router-link>
+        <div class="nav-divider" />
         <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
       </nav>
     </aside>

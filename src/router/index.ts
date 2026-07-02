@@ -111,6 +111,24 @@ const router = createRouter({
           component: () => import('@/views/SmartfarmView.vue'),
           meta: { requiresAuth: true, title: '스마트팜' },
         },
+        {
+          path: 'agent',
+          name: 'agent',
+          component: () => import('@/views/AgentView.vue'),
+          meta: { requiresAuth: true, title: 'AI Agent 콘솔' },
+        },
+        {
+          path: 'agent/prompts',
+          name: 'agent-prompts',
+          component: () => import('@/views/AgentPromptsView.vue'),
+          meta: { requiresAuth: true, title: 'Agent 프롬프트 관리' },
+        },
+        {
+          path: 'agent/logs',
+          name: 'agent-logs',
+          component: () => import('@/views/AgentLogsView.vue'),
+          meta: { requiresAuth: true, title: 'Agent 로그' },
+        },
       ],
     },
     {

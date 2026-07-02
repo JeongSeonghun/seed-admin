@@ -342,4 +342,45 @@ export default {
   deleteSmartfarmRule(ruleId: number) {
     return http.delete(`/admin/smartfarm/rules/${ruleId}`)
   },
+
+  // Agent Platform
+  getAgentHealth() {
+    return http.get<{ provider: string; healthy: boolean; models: string[] }>('/agent/health')
+  },
+  getAgents() {
+    return http.get<{ agentId: string; name: string; systemPrompt: string; defaultModel: string | null; temperature: number }[]>('/agent/prompts')
+  },
+  upsertAgent(agentId: string, body: { name: string; systemPrompt: string; defaultModel?: string; temperature?: number }) {
+    return http.put(`/agent/prompts/${agentId}`, body)
+  },
+  deleteAgent(agentId: string) {
+    return http.delete(`/agent/prompts/${agentId}`)
+  },
+  getAgentLogs(params?: { limit?: number; agentId?: string }) {
+    return http.get<AgentLog[]>('/agent/logs', { params })
+  },
+  getAgentLogStats() {
+    return http.get<AgentLogStats>('/agent/logs/stats')
+  },
+}
+
+export interface AgentLog {
+  id: string
+  userId: number
+  agentId: string | null
+  sessionId: string | null
+  model: string
+  input: string
+  output: string
+  latencyMs: number
+  isError: boolean
+  errorMessage: string | null
+  createdAt: string
+}
+
+export interface AgentLogStats {
+  total: number
+  errors: number
+  avgLatencyMs: number
+  byAgent: { agentId: string; count: number }[]
 }
