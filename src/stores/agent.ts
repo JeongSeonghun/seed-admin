@@ -45,7 +45,7 @@ export const useAgentStore = defineStore('agent', () => {
         llmHealthy.value = health.healthy
         models.value = health.models
         if (health.models.length && !health.models.includes(selectedModel.value)) {
-          selectedModel.value = health.models[0]
+          selectedModel.value = health.models[0]!
         }
       } else {
         llmHealthy.value = false
