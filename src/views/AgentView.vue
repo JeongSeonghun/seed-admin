@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { useAgentStore } from '@/stores/agent'
+import { useAgentStore, type ChatMessage } from '@/stores/agent'
 import { useAgentStream } from '@/composables/useAgentStream'
 import { renderMarkdown } from '@/composables/useMarkdown'
+import api, { type AgentSessionSummary } from '@/network'
 
 const store = useAgentStore()
 const inputText = ref('')
 const chatContainer = ref<HTMLElement | null>(null)
+
+const sessions = ref<AgentSessionSummary[]>([])
+const sessionsLoading = ref(false)
 
 const { status, errorMessage, send, stop } = useAgentStream({
   onChunk(chunk) {
@@ -25,7 +29,56 @@ const isStreaming = computed(() => status.value === 'streaming')
 
 onMounted(() => {
   store.loadAgentsAndModels()
+  loadSessions()
 })
+
+async function loadSessions() {
+  sessionsLoading.value = true
+  try {
+    const res = await api.getAgentSessions({ limit: 20 })
+    sessions.value = res.data
+  } catch {
+    sessions.value = []
+  } finally {
+    sessionsLoading.value = false
+  }
+}
+
+async function resumeSession(sessionId: string) {
+  if (isStreaming.value || sessionId === store.sessionId) return
+  try {
+    const res = await api.getAgentSessionHistory(sessionId)
+    const history: ChatMessage[] = []
+    for (const log of res.data) {
+      history.push({ role: 'user', content: log.input, timestamp: new Date(log.createdAt).getTime() })
+      history.push({ role: 'assistant', content: log.output, timestamp: new Date(log.createdAt).getTime() })
+    }
+    store.resumeSession(sessionId, history)
+    await nextTick()
+    scrollToBottom()
+  } catch {
+    // 세션 히스토리 로드 실패는 조용히 무시 - 콘솔은 그대로 사용 가능
+  }
+}
+
+async function removeSession(sessionId: string) {
+  if (!confirm('이 세션의 진행 중인 대화 컨텍스트를 초기화하시겠습니까? (로그 기록은 남습니다)')) return
+  try {
+    await api.deleteAgentSession(sessionId)
+    if (sessionId === store.sessionId) store.newSession()
+    await loadSessions()
+  } catch {
+    // noop
+  }
+}
+
+function formatSessionDate(iso: string) {
+  return new Date(iso).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function truncate(text: string, max = 36) {
+  return text.length > max ? text.slice(0, max) + '…' : text
+}
 
 async function submit() {
   const text = inputText.value.trim()
@@ -43,6 +96,10 @@ async function submit() {
     agentId: store.selectedAgentId,
     model: store.selectedModel,
   })
+
+  // SSE의 "done" 이벤트 파싱에 기대지 않고, send()가 끝나면(성공/에러 무관) 항상
+  // 세션 목록을 새로고침 — 스트림 종료 타이밍에 따라 onDone이 안 불릴 수 있음.
+  await loadSessions()
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -103,6 +160,29 @@ function newSession() {
       </div>
 
       <button class="btn-outline" @click="newSession">새 대화 시작</button>
+
+      <!-- 최근 세션 목록 -->
+      <div class="sessions-panel">
+        <span class="field-label">최근 세션</span>
+        <div v-if="sessionsLoading" class="loading-sm">로드 중...</div>
+        <div v-else-if="sessions.length === 0" class="no-data">세션 없음</div>
+        <div v-else class="session-list">
+          <div
+            v-for="s in sessions"
+            :key="s.sessionId"
+            class="session-item"
+            :class="{ active: s.sessionId === store.sessionId }"
+            @click="resumeSession(s.sessionId)"
+          >
+            <div class="session-item-top">
+              <span class="session-item-agent">{{ s.agentId ?? '기본' }}</span>
+              <button class="session-item-del" title="세션 초기화" @click.stop="removeSession(s.sessionId)">✕</button>
+            </div>
+            <div class="session-item-preview">{{ truncate(s.lastMessage) }}</div>
+            <div class="session-item-date">{{ formatSessionDate(s.updatedAt) }}</div>
+          </div>
+        </div>
+      </div>
     </aside>
 
     <!-- 채팅 영역 -->
@@ -173,7 +253,7 @@ function newSession() {
 
 /* 사이드 패널 */
 .agent-sidebar {
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
   background: white;
   border-radius: 10px;
@@ -182,6 +262,8 @@ function newSession() {
   flex-direction: column;
   gap: 0.75rem;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  min-height: 0;
+  overflow: hidden;
 }
 .panel-title {
   font-weight: 700;
@@ -244,9 +326,78 @@ function newSession() {
   cursor: pointer;
   font-size: 0.85rem;
   transition: background 0.15s;
-  margin-top: auto;
+  flex-shrink: 0;
 }
 .btn-outline:hover { background: #ebf0ff; }
+
+/* 최근 세션 목록 */
+.sessions-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow: hidden;
+}
+.loading-sm, .no-data {
+  font-size: 0.78rem;
+  color: #a0aec0;
+}
+.session-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.session-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.session-item:hover { border-color: #bee3f8; }
+.session-item.active { border-color: #4a6cf7; background: #f5f8ff; }
+.session-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.session-item-agent {
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: #4a6cf7;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-item-del {
+  border: none;
+  background: transparent;
+  color: #a0aec0;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 0.2rem;
+  flex-shrink: 0;
+}
+.session-item-del:hover { color: #c53030; }
+.session-item-preview {
+  font-size: 0.76rem;
+  color: #4a5568;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-item-date {
+  font-size: 0.68rem;
+  color: #a0aec0;
+  margin-top: 0.15rem;
+}
 
 /* 채팅 영역 */
 .chat-wrap {

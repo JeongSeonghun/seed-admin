@@ -356,6 +356,21 @@ export default {
   deleteAgent(agentId: string) {
     return http.delete(`/agent/prompts/${agentId}`)
   },
+  getAgentPromptVersions(agentId: string) {
+    return http.get<AgentPromptVersion[]>(`/agent/prompts/${agentId}/versions`)
+  },
+  rollbackAgentPrompt(agentId: string, version: number) {
+    return http.post(`/agent/prompts/${agentId}/versions/${version}/rollback`)
+  },
+  getAgentSessions(params?: { limit?: number; offset?: number }) {
+    return http.get<AgentSessionSummary[]>('/agent/sessions', { params })
+  },
+  getAgentSessionHistory(sessionId: string) {
+    return http.get<AgentLog[]>(`/agent/sessions/${sessionId}`)
+  },
+  deleteAgentSession(sessionId: string) {
+    return http.delete(`/agent/sessions/${sessionId}`)
+  },
   getAgentLogs(params?: { limit?: number; agentId?: string }) {
     return http.get<AgentLog[]>('/agent/logs', { params })
   },
@@ -382,6 +397,25 @@ export interface AgentLog {
   promptTokens: number | null
   completionTokens: number | null
   createdAt: string
+}
+
+export interface AgentPromptVersion {
+  id: string
+  agentId: string
+  version: number
+  name: string
+  systemPrompt: string
+  defaultModel: string | null
+  temperature: number
+  createdAt: string
+}
+
+export interface AgentSessionSummary {
+  sessionId: string
+  agentId: string | null
+  lastMessage: string
+  updatedAt: string
+  messageCount: number
 }
 
 export interface AgentLogStats {

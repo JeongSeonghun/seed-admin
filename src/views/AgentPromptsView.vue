@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/network'
 import type { AgentInfo } from '@/stores/agent'
+import type { AgentPromptVersion } from '@/network'
 
 const agents = ref<AgentInfo[]>([])
 const loading = ref(false)
@@ -19,6 +20,12 @@ const form = ref({
   defaultModel: '',
   temperature: 0.7,
 })
+
+// 버전 이력
+const versions = ref<AgentPromptVersion[]>([])
+const versionsLoading = ref(false)
+const expandedVersion = ref<number | null>(null)
+const rollingBack = ref<number | null>(null)
 
 onMounted(loadAgents)
 
@@ -38,10 +45,11 @@ async function loadAgents() {
 function openNew() {
   isNew.value = true
   editing.value = null
+  versions.value = []
   form.value = { agentId: '', name: '', systemPrompt: '', defaultModel: '', temperature: 0.7 }
 }
 
-function openEdit(agent: AgentInfo) {
+async function openEdit(agent: AgentInfo) {
   isNew.value = false
   editing.value = agent
   form.value = {
@@ -51,11 +59,26 @@ function openEdit(agent: AgentInfo) {
     defaultModel: agent.defaultModel ?? '',
     temperature: agent.temperature,
   }
+  await loadVersions(agent.agentId)
+}
+
+async function loadVersions(agentId: string) {
+  versionsLoading.value = true
+  expandedVersion.value = null
+  try {
+    const res = await api.getAgentPromptVersions(agentId)
+    versions.value = res.data
+  } catch {
+    versions.value = []
+  } finally {
+    versionsLoading.value = false
+  }
 }
 
 function closePanel() {
   editing.value = null
   isNew.value = false
+  versions.value = []
 }
 
 async function save() {
@@ -69,8 +92,11 @@ async function save() {
       defaultModel: form.value.defaultModel || undefined,
       temperature: form.value.temperature,
     })
+    const agentId = form.value.agentId
     closePanel()
     await loadAgents()
+    const saved = agents.value.find((a) => a.agentId === agentId)
+    if (saved) await openEdit(saved)
   } catch {
     error.value = '저장 실패'
   } finally {
@@ -87,6 +113,29 @@ async function remove(agentId: string) {
   } catch {
     error.value = '삭제 실패'
   }
+}
+
+async function rollback(agentId: string, version: number) {
+  if (!confirm(`v${version}로 롤백하시겠습니까? (현재 내용이 새 버전으로 한 번 더 저장됩니다)`)) return
+  rollingBack.value = version
+  try {
+    await api.rollbackAgentPrompt(agentId, version)
+    await loadAgents()
+    const saved = agents.value.find((a) => a.agentId === agentId)
+    if (saved) await openEdit(saved)
+  } catch {
+    error.value = '롤백 실패'
+  } finally {
+    rollingBack.value = null
+  }
+}
+
+function toggleExpand(version: number) {
+  expandedVersion.value = expandedVersion.value === version ? null : version
+}
+
+function truncate(text: string, max = 60) {
+  return text.length > max ? text.slice(0, max) + '…' : text
 }
 </script>
 
@@ -115,7 +164,10 @@ async function remove(agentId: string) {
         @click="openEdit(agent)"
       >
         <div class="agent-name">{{ agent.name }}</div>
-        <div class="agent-id">{{ agent.agentId }}</div>
+        <div class="agent-id">
+          {{ agent.agentId }}
+          <span v-if="agent.currentVersion" class="version-chip">v{{ agent.currentVersion }}</span>
+        </div>
         <div class="agent-meta">
           모델: {{ agent.defaultModel ?? '요청 시 지정' }}
           &nbsp;·&nbsp; temperature: {{ agent.temperature }}
@@ -179,6 +231,42 @@ async function remove(agentId: string) {
           >
             {{ saving ? '저장 중...' : '저장' }}
           </button>
+        </div>
+      </div>
+
+      <!-- 버전 이력 (기존 Agent 편집 시에만) -->
+      <div v-if="!isNew" class="version-section">
+        <div class="section-title">버전 이력</div>
+        <div v-if="versionsLoading" class="placeholder">로드 중...</div>
+        <div v-else-if="versions.length === 0" class="placeholder">이력이 없습니다.</div>
+        <div v-else class="version-list">
+          <div
+            v-for="v in versions"
+            :key="v.version"
+            class="version-item"
+            :class="{ current: v.version === editing?.currentVersion }"
+          >
+            <div class="version-row" @click="toggleExpand(v.version)">
+              <span class="version-badge">v{{ v.version }}</span>
+              <span v-if="v.version === editing?.currentVersion" class="current-tag">현재</span>
+              <span class="version-preview">{{ truncate(v.systemPrompt) }}</span>
+              <span class="version-date">{{ new Date(v.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
+            </div>
+            <div v-if="expandedVersion === v.version" class="version-detail">
+              <pre class="pre-box">{{ v.systemPrompt }}</pre>
+              <div class="version-detail-meta">
+                모델: {{ v.defaultModel ?? '요청 시 지정' }} &nbsp;·&nbsp; temperature: {{ v.temperature }}
+              </div>
+              <button
+                v-if="v.version !== editing?.currentVersion"
+                class="btn-outline btn-sm"
+                :disabled="rollingBack === v.version"
+                @click="rollback(editing!.agentId, v.version)"
+              >
+                {{ rollingBack === v.version ? '롤백 중...' : `이 버전으로 롤백` }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -381,4 +469,110 @@ async function remove(agentId: string) {
   border-radius: 6px;
   font-size: 0.85rem;
 }
+
+/* 버전 뱃지 (목록 카드) */
+.version-chip {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  background: #ebf4ff;
+  color: #2b6cb0;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* 버전 이력 */
+.version-section {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #718096;
+  text-transform: uppercase;
+}
+.version-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.version-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.version-item.current { border-color: #4a6cf7; }
+.version-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.version-row:hover { background: #f7fafc; }
+.version-badge {
+  font-family: monospace;
+  font-weight: 700;
+  color: #4a5568;
+  flex-shrink: 0;
+}
+.current-tag {
+  background: #4a6cf7;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.version-preview {
+  flex: 1;
+  color: #718096;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.version-date {
+  font-size: 0.72rem;
+  color: #a0aec0;
+  flex-shrink: 0;
+}
+.version-detail {
+  padding: 0.75rem;
+  border-top: 1px solid #f0f2f5;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pre-box {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+}
+.version-detail-meta { font-size: 0.75rem; color: #a0aec0; }
+.btn-outline {
+  align-self: flex-start;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  border: 1px solid #4a6cf7;
+  color: #4a6cf7;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-outline:hover:not(:disabled) { background: #ebf0ff; }
+.btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-sm { font-size: 0.78rem; }
 </style>

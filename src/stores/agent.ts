@@ -8,6 +8,7 @@ export interface AgentInfo {
   systemPrompt: string
   defaultModel: string | null
   temperature: number
+  currentVersion?: number
 }
 
 export interface ChatMessage {
@@ -75,6 +76,12 @@ export const useAgentStore = defineStore('agent', () => {
     messages.value = []
   }
 
+  // 저장된 세션(agent_log 기록)을 콘솔에 불러와 이어서 대화할 수 있게 함
+  function resumeSession(id: string, history: ChatMessage[]) {
+    sessionId.value = id
+    messages.value = history
+  }
+
   return {
     agents,
     models,
@@ -88,9 +95,11 @@ export const useAgentStore = defineStore('agent', () => {
     startAssistantMessage,
     appendToLastAssistantMessage,
     newSession,
+    resumeSession,
   }
 })
 
+// 백엔드 ChatRequestDto.sessionId가 @IsUUID('4')로 검증하므로 반드시 UUID 형식이어야 함
 function generateSessionId(): string {
-  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  return crypto.randomUUID()
 }
