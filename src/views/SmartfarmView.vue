@@ -280,6 +280,9 @@ const chartDatasets = computed(() =>
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  // Chart.js가 기존 인스턴스에 새 data를 반영하는 도중(애니메이션 중) 또 업데이트가
+  // 들어오면 캔버스가 빈 채로 남는 경우가 있어(시간별→일별 전환 시 재현) 비활성화.
+  animation: false as const,
   plugins: {
     legend: { display: false },
     tooltip: { mode: 'index' as const, intersect: false },

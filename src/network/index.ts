@@ -362,6 +362,9 @@ export default {
   getAgentLogStats() {
     return http.get<AgentLogStats>('/agent/logs/stats')
   },
+  getAgentLogsTimeseries(params: { interval?: 'hour' | 'day'; from?: string; to?: string }) {
+    return http.get<AgentLogTimeseriesRow[]>('/agent/logs/timeseries', { params })
+  },
 }
 
 export interface AgentLog {
@@ -369,12 +372,15 @@ export interface AgentLog {
   userId: number
   agentId: string | null
   sessionId: string | null
+  promptVersion: number | null
   model: string
   input: string
   output: string
   latencyMs: number
   isError: boolean
   errorMessage: string | null
+  promptTokens: number | null
+  completionTokens: number | null
   createdAt: string
 }
 
@@ -382,5 +388,25 @@ export interface AgentLogStats {
   total: number
   errors: number
   avgLatencyMs: number
+  totalPromptTokens: number
+  totalCompletionTokens: number
   byAgent: { agentId: string; count: number }[]
+  byModel: {
+    model: string
+    count: number
+    avgLatencyMs: number
+    errorRate: number
+    totalPromptTokens: number
+    totalCompletionTokens: number
+  }[]
+}
+
+export interface AgentLogTimeseriesRow {
+  bucket: string
+  model: string
+  count: number
+  avgLatencyMs: number
+  errorCount: number
+  promptTokens: number
+  completionTokens: number
 }
