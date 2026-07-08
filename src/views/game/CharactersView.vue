@@ -70,7 +70,8 @@ async function uploadForField(field: 'normalUrl' | 'hitUrl' | 'criticalUrl' | 'd
 async function save() {
   saving.value = true
   try {
-    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice: form.value.coinPrice ?? undefined, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
+    const coinPrice = form.value.coinPrice === null || (form.value.coinPrice as unknown) === '' ? null : form.value.coinPrice
+    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGameCharacter(form.value.id, body)
     else await api.createGameCharacter(body)
     showModal.value = false
