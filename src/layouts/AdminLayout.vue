@@ -31,7 +31,7 @@ async function logout() {
         <div class="nav-section">게임 관리</div>
         <router-link :to="{ name: 'game-words' }" class="nav-item nav-sub">단어</router-link>
         <router-link :to="{ name: 'game-stages' }" class="nav-item nav-sub">스테이지</router-link>
-        <router-link :to="{ name: 'game-scene-packs' }" class="nav-item nav-sub">씬 팩</router-link>
+        <router-link :to="{ name: 'game-monster-packs' }" class="nav-item nav-sub">몬스터 팩</router-link>
         <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>
         <router-link :to="{ name: 'game-characters' }" class="nav-item nav-sub">캐릭터</router-link>
         <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>

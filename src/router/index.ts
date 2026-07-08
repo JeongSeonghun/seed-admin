@@ -82,10 +82,10 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '스테이지 관리' },
         },
         {
-          path: 'game/scene-packs',
-          name: 'game-scene-packs',
-          component: () => import('@/views/game/ScenePacksView.vue'),
-          meta: { requiresAuth: true, title: '씬 팩 관리' },
+          path: 'game/monster-packs',
+          name: 'game-monster-packs',
+          component: () => import('@/views/game/MonsterPacksView.vue'),
+          meta: { requiresAuth: true, title: '몬스터 팩 관리' },
         },
         {
           path: 'game/bundles',

@@ -3,12 +3,12 @@ import { ref, onMounted } from 'vue'
 import api from '@/network'
 
 interface PackageImage { id: number; imageUrl: string; sortOrder: number }
-interface ScenePack {
+interface MonsterPack {
   id: number; name: string; description: string | null; coinPrice: number
   type: 'NORMAL' | 'BOSS'; contentCategory: 'GENERAL' | 'ADULT'; isDefault: boolean; isActive: boolean; images: PackageImage[]
 }
 
-const packs = ref<ScenePack[]>([])
+const packs = ref<MonsterPack[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -16,12 +16,12 @@ const saving = ref(false)
 const form = ref({ id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL' as 'NORMAL' | 'BOSS', contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT', isDefault: false, isActive: true })
 
 const uploadingImg = ref(false)
-const selectedPack = ref<ScenePack | null>(null)
+const selectedPack = ref<MonsterPack | null>(null)
 const showImgPanel = ref(false)
 
 async function load() {
   loading.value = true
-  try { const res = await api.getGameScenePacks(); packs.value = res.data }
+  try { const res = await api.getGameMonsterPacks(); packs.value = res.data }
   finally { loading.value = false }
 }
 onMounted(load)
@@ -31,7 +31,7 @@ function openCreate() {
   form.value = { id: 0, name: '', description: '', coinPrice: 0, type: 'NORMAL', contentCategory: 'GENERAL', isDefault: false, isActive: true }
   showModal.value = true
 }
-function openEdit(p: ScenePack) {
+function openEdit(p: MonsterPack) {
   isEdit.value = true
   form.value = { id: p.id, name: p.name, description: p.description ?? '', coinPrice: p.coinPrice, type: p.type, contentCategory: p.contentCategory, isDefault: p.isDefault, isActive: p.isActive }
   showModal.value = true
@@ -41,36 +41,36 @@ async function save() {
   saving.value = true
   try {
     const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, type: form.value.type, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
-    if (isEdit.value) await api.updateGameScenePack(form.value.id, body)
-    else await api.createGameScenePack(body)
+    if (isEdit.value) await api.updateGameMonsterPack(form.value.id, body)
+    else await api.createGameMonsterPack(body)
     showModal.value = false; await load()
   } catch (e: any) { alert(e?.response?.data?.message ?? '저장 실패') }
   finally { saving.value = false }
 }
 
-async function remove(p: ScenePack) {
-  if (!confirm(`"${p.name}" 씬 팩을 삭제하시겠습니까?`)) return
-  await api.deleteGameScenePack(p.id); await load()
+async function remove(p: MonsterPack) {
+  if (!confirm(`"${p.name}" 몬스터 팩을 삭제하시겠습니까?`)) return
+  await api.deleteGameMonsterPack(p.id); await load()
 }
 
-function openImages(p: ScenePack) { selectedPack.value = p; showImgPanel.value = true }
+function openImages(p: MonsterPack) { selectedPack.value = p; showImgPanel.value = true }
 
-async function uploadImage(pack: ScenePack, e: Event) {
+async function uploadImage(pack: MonsterPack, e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   uploadingImg.value = true
   try {
     const { data } = await api.uploadImage(file)
     const sortOrder = pack.images.length
-    await api.addScenePackImage(pack.id, { imageUrl: data.url, sortOrder })
+    await api.addMonsterPackImage(pack.id, { imageUrl: data.url, sortOrder })
     await load()
     selectedPack.value = packs.value.find(p => p.id === pack.id) ?? null
   } finally { uploadingImg.value = false; (e.target as HTMLInputElement).value = '' }
 }
 
-async function removeImage(pack: ScenePack, imgId: number) {
+async function removeImage(pack: MonsterPack, imgId: number) {
   if (!confirm('이미지를 삭제하시겠습니까?')) return
-  await api.removeScenePackImage(pack.id, imgId)
+  await api.removeMonsterPackImage(pack.id, imgId)
   await load()
   selectedPack.value = packs.value.find(p => p.id === pack.id) ?? null
 }
@@ -80,7 +80,7 @@ async function removeImage(pack: ScenePack, imgId: number) {
   <div class="layout">
     <div class="list-area">
       <div class="toolbar">
-        <button class="btn-primary" @click="openCreate">+ 씬 팩 추가</button>
+        <button class="btn-primary" @click="openCreate">+ 몬스터 팩 추가</button>
       </div>
       <div v-if="loading" class="loading">불러오는 중...</div>
       <div v-else class="table-wrap">
@@ -105,7 +105,7 @@ async function removeImage(pack: ScenePack, imgId: number) {
                 <button class="btn-sm btn-danger" @click="remove(p)">삭제</button>
               </td>
             </tr>
-            <tr v-if="!packs.length"><td colspan="7" class="empty">씬 팩이 없습니다.</td></tr>
+            <tr v-if="!packs.length"><td colspan="7" class="empty">몬스터 팩이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -134,9 +134,9 @@ async function removeImage(pack: ScenePack, imgId: number) {
 
   <div v-if="showModal" class="overlay" @click.self="showModal = false">
     <div class="modal">
-      <h3>{{ isEdit ? '씬 팩 편집' : '씬 팩 추가' }}</h3>
+      <h3>{{ isEdit ? '몬스터 팩 편집' : '몬스터 팩 추가' }}</h3>
       <label>이름 *</label>
-      <input v-model="form.name" type="text" placeholder="씬 팩 이름" />
+      <input v-model="form.name" type="text" placeholder="몬스터 팩 이름" />
       <label>설명</label>
       <input v-model="form.description" type="text" />
       <div class="form-row">

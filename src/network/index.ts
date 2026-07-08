@@ -217,24 +217,24 @@ export default {
     return http.delete(`/admin/game/stages/${id}`)
   },
 
-  // 게임 - 씬 팩
-  getGameScenePacks() {
-    return http.get('/admin/game/scene-packs')
+  // 게임 - 몬스터 팩
+  getGameMonsterPacks() {
+    return http.get('/admin/game/monster-packs')
   },
-  createGameScenePack(body: object) {
-    return http.post('/admin/game/scene-packs', body)
+  createGameMonsterPack(body: object) {
+    return http.post('/admin/game/monster-packs', body)
   },
-  updateGameScenePack(id: number, body: object) {
-    return http.patch(`/admin/game/scene-packs/${id}`, body)
+  updateGameMonsterPack(id: number, body: object) {
+    return http.patch(`/admin/game/monster-packs/${id}`, body)
   },
-  deleteGameScenePack(id: number) {
-    return http.delete(`/admin/game/scene-packs/${id}`)
+  deleteGameMonsterPack(id: number) {
+    return http.delete(`/admin/game/monster-packs/${id}`)
   },
-  addScenePackImage(packId: number, body: { imageUrl: string; sortOrder: number }) {
-    return http.post(`/admin/game/scene-packs/${packId}/images`, body)
+  addMonsterPackImage(packId: number, body: { imageUrl: string; sortOrder: number }) {
+    return http.post(`/admin/game/monster-packs/${packId}/images`, body)
   },
-  removeScenePackImage(packId: number, imageId: number) {
-    return http.delete(`/admin/game/scene-packs/${packId}/images/${imageId}`)
+  removeMonsterPackImage(packId: number, imageId: number) {
+    return http.delete(`/admin/game/monster-packs/${packId}/images/${imageId}`)
   },
 
   // 게임 - 번들
