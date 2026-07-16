@@ -280,6 +280,9 @@ export default {
   adminPushBroadcast(body: { title: string; body: string; appId?: string; data?: Record<string, string> }) {
     return http.post('/admin/push/broadcast', body)
   },
+  adminPushBroadcastEvent(body: { title: string; body: string; appId?: string; data?: Record<string, string> }) {
+    return http.post('/admin/push/broadcast-event', body)
+  },
   adminGetPushLogs(limit?: number) {
     return http.get('/admin/push/logs', { params: limit ? { limit } : undefined })
   },

@@ -21,7 +21,7 @@ const tab = ref<'send' | 'logs' | 'tokens'>('send')
 const tokenAppId = ref('')
 
 const form = ref({
-  type: 'broadcast' as 'broadcast' | 'users',
+  type: 'broadcast' as 'broadcast' | 'users' | 'event',
   userIdsText: '',
   title: '',
   body: '',
@@ -44,6 +44,10 @@ async function loadTokens() {
   finally { loading.value = false }
 }
 
+function onTypeChange() {
+  if (form.value.type === 'event' && !form.value.appId) form.value.appId = 'word-game'
+}
+
 function switchTab(t: 'send' | 'logs' | 'tokens') {
   tab.value = t
   if (t === 'logs') loadLogs()
@@ -52,10 +56,13 @@ function switchTab(t: 'send' | 'logs' | 'tokens') {
 
 async function send() {
   if (!form.value.title || !form.value.body) { alert('제목과 내용을 입력해주세요.'); return }
+  if (form.value.type === 'event' && !form.value.appId) { alert('이벤트/공지 발송은 앱을 지정해야 합니다.'); return }
   sending.value = true
   try {
     if (form.value.type === 'broadcast') {
       await api.adminPushBroadcast({ title: form.value.title, body: form.value.body, appId: form.value.appId || undefined })
+    } else if (form.value.type === 'event') {
+      await api.adminPushBroadcastEvent({ title: form.value.title, body: form.value.body, appId: form.value.appId })
     } else {
       const userIds = form.value.userIdsText.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0)
       if (!userIds.length) { alert('유저 ID를 입력해주세요.'); return }
@@ -89,9 +96,10 @@ function truncateToken(token: string) {
       <div class="form-row">
         <div class="form-col">
           <label>발송 대상</label>
-          <select v-model="form.type">
+          <select v-model="form.type" @change="onTypeChange">
             <option value="broadcast">전체 발송</option>
             <option value="users">특정 유저</option>
+            <option value="event">이벤트·공지 (알림 설정 반영)</option>
           </select>
         </div>
         <div class="form-col">
@@ -99,7 +107,7 @@ function truncateToken(token: string) {
           <select v-model="form.appId">
             <option value="word-game">word-game</option>
             <option value="smart-farm">smart-farm</option>
-            <option value="">전체</option>
+            <option v-if="form.type !== 'event'" value="">전체</option>
           </select>
         </div>
       </div>
@@ -117,7 +125,9 @@ function truncateToken(token: string) {
       </div>
       <div class="send-footer">
         <span class="target-desc">
-          {{ form.type === 'broadcast' ? '전체 유저에게 발송됩니다.' : '입력한 유저 ID에게만 발송됩니다.' }}
+          <template v-if="form.type === 'broadcast'">전체 유저에게 발송됩니다.</template>
+          <template v-else-if="form.type === 'event'">선택한 앱에서 "이벤트·공지 알림"을 꺼둔 유저는 제외하고 발송됩니다.</template>
+          <template v-else>입력한 유저 ID에게만 발송됩니다.</template>
         </span>
         <button class="btn-primary" :disabled="sending" @click="send">
           {{ sending ? '발송 중...' : '발송' }}
