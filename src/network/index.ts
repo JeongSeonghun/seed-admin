@@ -202,6 +202,12 @@ export default {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     )
   },
+  reindexGameWordEmbeddings() {
+    return http.post<{ processed: number }>('/admin/game/words/reindex-embeddings')
+  },
+  getSimilarGameWords(id: number, count = 5) {
+    return http.get(`/admin/game/words/${id}/similar`, { params: { count } })
+  },
 
   // 게임 - 스테이지
   getGameStages() {

@@ -12,6 +12,8 @@ interface Word {
   exampleKo: string | null
   tags: string[]
   isActive: boolean
+  embeddingPending: boolean
+  embeddedIn: string | null
 }
 
 const PARTS = ['NOUN', 'VERB', 'ADJ', 'ADV', 'PRON', 'PREP', 'CONJ', 'OTHER']
@@ -102,6 +104,42 @@ async function remove(w: Word) {
   await api.deleteGameWord(w.id)
   await load()
 }
+
+const reindexing = ref(false)
+
+async function reindex() {
+  reindexing.value = true
+  try {
+    const { data } = await api.reindexGameWordEmbeddings()
+    alert(data.processed > 0 ? `${data.processed}개 재인덱싱 완료` : '대기 중인 단어가 없거나 LLM 서버가 꺼져있습니다.')
+    await load()
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '재인덱싱 실패')
+  } finally {
+    reindexing.value = false
+  }
+}
+
+const showSimilar = ref(false)
+const similarLoading = ref(false)
+const similarTarget = ref<Word | null>(null)
+const similarWords = ref<Word[]>([])
+
+async function openSimilar(w: Word) {
+  similarTarget.value = w
+  showSimilar.value = true
+  similarLoading.value = true
+  similarWords.value = []
+  try {
+    const { data } = await api.getSimilarGameWords(w.id)
+    similarWords.value = data.similar
+  } catch (e: any) {
+    alert(e?.response?.data?.message ?? '유사 단어 조회 실패')
+    showSimilar.value = false
+  } finally {
+    similarLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -119,6 +157,9 @@ async function remove(w: Word) {
           {{ importing ? '가져오는 중...' : '파일 가져오기' }}
           <input type="file" accept=".xlsx,.xls,.json,.csv,.txt" hidden :disabled="importing" @change="handleImport" />
         </label>
+        <button class="btn-import" :disabled="reindexing" @click="reindex">
+          {{ reindexing ? '재인덱싱 중...' : '벡터 재인덱싱' }}
+        </button>
         <button class="btn-primary" @click="openCreate">+ 단어 추가</button>
       </div>
     </div>
@@ -135,7 +176,7 @@ async function remove(w: Word) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>ID</th><th>영단어</th><th>뜻</th><th>레벨</th><th>품사</th><th>활성</th><th>액션</th></tr>
+          <tr><th>ID</th><th>영단어</th><th>뜻</th><th>레벨</th><th>품사</th><th>활성</th><th>임베딩</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="w in words" :key="w.id">
@@ -146,11 +187,18 @@ async function remove(w: Word) {
             <td>{{ w.partOfSpeech ? PART_LABELS[w.partOfSpeech] ?? w.partOfSpeech : '-' }}</td>
             <td><span class="badge" :class="w.isActive ? 'badge-green' : 'badge-gray'">{{ w.isActive ? '활성' : '비활성' }}</span></td>
             <td>
+              <span class="badge" :class="w.embeddingPending ? 'badge-gray' : 'badge-green'" :title="w.embeddedIn ? `현재 임베딩 위치: ${w.embeddedIn}` : '임베딩된 적 없음'">
+                {{ w.embeddingPending ? '대기중' : '인덱싱됨' }}
+              </span>
+              <span v-if="w.embeddedIn" class="embedded-in">{{ w.embeddedIn }}</span>
+            </td>
+            <td>
+              <button class="btn-sm" :disabled="w.embeddingPending" @click="openSimilar(w)">유사 단어</button>
               <button class="btn-sm" @click="openEdit(w)">편집</button>
               <button class="btn-sm btn-danger" @click="remove(w)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!words.length"><td colspan="7" class="empty">단어가 없습니다.</td></tr>
+          <tr v-if="!words.length"><td colspan="8" class="empty">단어가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -195,6 +243,25 @@ async function remove(w: Word) {
         <div class="modal-actions">
           <button class="btn-ghost" @click="showModal = false">취소</button>
           <button class="btn-primary" :disabled="saving" @click="save">{{ saving ? '저장 중...' : '저장' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showSimilar" class="overlay" @click.self="showSimilar = false">
+      <div class="modal">
+        <h3>"{{ similarTarget?.english }}"({{ similarTarget?.korean }})와 헷갈리는 단어</h3>
+        <p class="hint">퀴즈 오답 보기로 실제 쓰이는 벡터 유사도 검색 결과입니다(랜덤 폴백 제외).</p>
+        <div v-if="similarLoading" class="loading">불러오는 중...</div>
+        <ul v-else-if="similarWords.length" class="similar-list">
+          <li v-for="s in similarWords" :key="s.id">
+            <span class="en">{{ s.english }}</span>
+            <span>{{ s.korean }}</span>
+            <span class="badge badge-blue">Lv{{ s.level }}</span>
+          </li>
+        </ul>
+        <div v-else class="empty">유사한 단어를 찾지 못했습니다(인덱싱 직후이거나 같은 레벨에 단어가 부족할 수 있음).</div>
+        <div class="modal-actions">
+          <button class="btn-ghost" @click="showSimilar = false">닫기</button>
         </div>
       </div>
     </div>
@@ -246,4 +313,8 @@ tr:last-child td { border-bottom: none; }
 .modal input[type="text"], .modal select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; }
 .check-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; cursor: pointer; font-weight: normal !important; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
+.similar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; max-height: 320px; overflow-y: auto; }
+.similar-list li { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; background: #f7f8fa; border-radius: 6px; font-size: 0.875rem; }
+.similar-list .en { font-weight: 500; min-width: 90px; }
+.embedded-in { display: block; margin-top: 0.2rem; font-size: 0.7rem; color: #aaa; }
 </style>
