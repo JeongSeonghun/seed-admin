@@ -352,6 +352,14 @@ export default {
     return http.delete(`/admin/smartfarm/rules/${ruleId}`)
   },
 
+  // 스마트팜 - AI 리포트
+  getSmartfarmDailyReport(deviceId: number, params?: { from?: string; to?: string }) {
+    return http.get<{ summary: string; highlights: string[]; recommendations: string[] }>(
+      `/agent/smartfarm/devices/${deviceId}/daily-report`,
+      { params },
+    )
+  },
+
   // Agent Platform
   getAgentHealth() {
     return http.get<{ provider: string; healthy: boolean; models: string[] }>('/agent/health')

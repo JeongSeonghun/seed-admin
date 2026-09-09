@@ -33,7 +33,7 @@ interface Rule {
 // ── 상태 ────────────────────────────────────────────────────────
 const devices = ref<Device[]>([])
 const selectedDevice = ref<Device | null>(null)
-const activeTab = ref<'readings' | 'commands' | 'rules'>('readings')
+const activeTab = ref<'readings' | 'commands' | 'rules' | 'report'>('readings')
 const loading = ref(true)
 
 const readings = ref<Reading[]>([])
@@ -88,8 +88,14 @@ watch([selectedDevice, activeTab], () => {
   loadTab()
 })
 
+// 디바이스를 바꾸면 이전 디바이스의 리포트가 남아있으면 안 되므로 초기화
+watch(selectedDevice, () => { report.value = null })
+
 async function loadTab() {
   const d = selectedDevice.value!
+  // AI 리포트는 LLM 호출 비용이 있어 탭 전환만으로 자동 생성하지 않고 버튼으로 수동 트리거
+  if (activeTab.value === 'report') return
+
   tabLoading.value = true
   try {
     if (activeTab.value === 'readings') {
@@ -201,24 +207,28 @@ const chartCustomTo = ref('')
 const chartRows = ref<ChartRow[]>([])
 const chartLoading = ref(false)
 
-function periodRange() {
+function computeRange(period: ChartPeriod, customFrom: string, customTo: string) {
   const now = new Date()
-  if (chartPeriod.value === 'today') {
+  if (period === 'today') {
     const from = new Date(now); from.setHours(0, 0, 0, 0)
     return { from: from.toISOString(), to: now.toISOString() }
   }
-  if (chartPeriod.value === '7d') {
+  if (period === '7d') {
     const from = new Date(now); from.setDate(from.getDate() - 7); from.setHours(0, 0, 0, 0)
     return { from: from.toISOString(), to: now.toISOString() }
   }
-  if (chartPeriod.value === '30d') {
+  if (period === '30d') {
     const from = new Date(now); from.setDate(from.getDate() - 30); from.setHours(0, 0, 0, 0)
     return { from: from.toISOString(), to: now.toISOString() }
   }
   return {
-    from: chartCustomFrom.value ? new Date(chartCustomFrom.value).toISOString() : '',
-    to:   chartCustomTo.value   ? new Date(chartCustomTo.value + 'T23:59:59').toISOString() : '',
+    from: customFrom ? new Date(customFrom).toISOString() : '',
+    to:   customTo   ? new Date(customTo + 'T23:59:59').toISOString() : '',
   }
+}
+
+function periodRange() {
+  return computeRange(chartPeriod.value, chartCustomFrom.value, chartCustomTo.value)
 }
 
 async function loadChart() {
@@ -293,6 +303,33 @@ const chartOptions = {
   },
 }
 
+// ── AI 리포트 ─────────────────────────────────────────────────────
+interface DailyReport { summary: string; highlights: string[]; recommendations: string[] }
+
+type ReportPeriod = 'today' | '7d' | 'custom'
+const reportPeriod = ref<ReportPeriod>('today')
+const reportCustomFrom = ref('')
+const reportCustomTo = ref('')
+const report = ref<DailyReport | null>(null)
+const reportLoading = ref(false)
+const reportError = ref('')
+
+async function generateReport() {
+  if (!selectedDevice.value) return
+  reportLoading.value = true
+  reportError.value = ''
+  report.value = null
+  try {
+    const { from, to } = computeRange(reportPeriod.value, reportCustomFrom.value, reportCustomTo.value)
+    const res = await api.getSmartfarmDailyReport(selectedDevice.value.id, { from, to })
+    report.value = res.data
+  } catch (e: any) {
+    reportError.value = e?.response?.data?.message ?? 'AI 리포트 생성에 실패했습니다.'
+  } finally {
+    reportLoading.value = false
+  }
+}
+
 // ── 포맷 유틸 ─────────────────────────────────────────────────────
 function fmtDate(v: string | null) {
   if (!v) return '-'
@@ -365,7 +402,8 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
         <button class="tab" :class="{ active: activeTab === 'readings' }" @click="activeTab = 'readings'">센서 데이터</button>
         <button class="tab" :class="{ active: activeTab === 'commands' }" @click="activeTab = 'commands'">제어 명령</button>
         <button class="tab" :class="{ active: activeTab === 'rules' }" @click="activeTab = 'rules'">자동 규칙</button>
-        <button class="btn-ghost tab-refresh" @click="loadTab">새로고침</button>
+        <button class="tab" :class="{ active: activeTab === 'report' }" @click="activeTab = 'report'">AI 리포트</button>
+        <button v-if="activeTab !== 'report'" class="btn-ghost tab-refresh" @click="loadTab">새로고침</button>
       </div>
 
       <div v-if="tabLoading" class="loading-sm" style="padding:1.5rem">불러오는 중...</div>
@@ -495,6 +533,46 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
           </tbody>
         </table>
         <div v-else class="empty-state">등록된 규칙이 없습니다.</div>
+      </div>
+
+      <!-- AI 리포트 탭 -->
+      <div v-else-if="activeTab === 'report'">
+        <div class="readings-toolbar">
+          <div class="period-btns">
+            <button :class="{ active: reportPeriod === 'today' }" @click="reportPeriod = 'today'">오늘</button>
+            <button :class="{ active: reportPeriod === '7d' }"   @click="reportPeriod = '7d'">7일</button>
+            <button :class="{ active: reportPeriod === 'custom' }" @click="reportPeriod = 'custom'">직접</button>
+          </div>
+          <template v-if="reportPeriod === 'custom'">
+            <input type="date" v-model="reportCustomFrom" class="date-input" />
+            <span class="date-sep">~</span>
+            <input type="date" v-model="reportCustomTo" class="date-input" />
+          </template>
+          <button class="btn-primary btn-sm" @click="generateReport" :disabled="reportLoading">
+            {{ reportLoading ? '생성 중...' : 'AI 리포트 생성' }}
+          </button>
+        </div>
+
+        <div v-if="reportLoading" class="empty-state">센서 데이터를 분석하는 중입니다...</div>
+        <div v-else-if="reportError" class="report-error">{{ reportError }}</div>
+        <div v-else-if="report" class="report-card">
+          <p class="report-summary">{{ report.summary }}</p>
+          <div class="report-section">
+            <h4>특이사항</h4>
+            <ul v-if="report.highlights.length">
+              <li v-for="(h, i) in report.highlights" :key="i">{{ h }}</li>
+            </ul>
+            <p v-else class="report-empty">특이사항 없음</p>
+          </div>
+          <div class="report-section">
+            <h4>조치 제안</h4>
+            <ul v-if="report.recommendations.length">
+              <li v-for="(r, i) in report.recommendations" :key="i">{{ r }}</li>
+            </ul>
+            <p v-else class="report-empty">제안 없음</p>
+          </div>
+        </div>
+        <div v-else class="empty-state">기간을 선택하고 "AI 리포트 생성"을 눌러주세요.</div>
       </div>
     </div>
 
@@ -677,6 +755,15 @@ const TYPE_LABEL: Record<string, string> = { temperature: '온도(°C)', humidit
 }
 .date-sep { color: #aaa; font-size: 0.8rem; }
 .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+
+/* AI 리포트 */
+.report-error { text-align: center; color: #c53030; padding: 2rem 1rem; font-size: 0.875rem; }
+.report-card { padding: 1.25rem; }
+.report-summary { font-size: 0.95rem; color: #1a1a2e; line-height: 1.6; margin: 0 0 1rem; }
+.report-section { margin-top: 1rem; }
+.report-section h4 { font-size: 0.8rem; color: #888; margin: 0 0 0.4rem; }
+.report-section ul { margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #333; line-height: 1.7; }
+.report-empty { font-size: 0.85rem; color: #aaa; margin: 0; }
 
 .chart-grid { display: flex; flex-direction: column; gap: 0; }
 .chart-card { border-bottom: 1px solid #f0f2f5; padding: 1rem 1.25rem 1.25rem; }
