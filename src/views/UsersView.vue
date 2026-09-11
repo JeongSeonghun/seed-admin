@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/network'
 
 interface ServiceAccess {
@@ -15,6 +15,8 @@ interface User {
   name: string
   phone: string
   isAdultVerified: boolean
+  isGuest: boolean
+  guestAvailableAt: string | null
   roles: string[]
   services: ServiceAccess[]
 }
@@ -29,6 +31,26 @@ const users = ref<User[]>([])
 const services = ref<Service[]>([])
 const loading = ref(true)
 const errorMsg = ref('')
+// 포트폴리오/체험용 게스트 계정 풀은 기본으로 숨겨서 실제 사용자 목록을 깔끔하게 유지한다.
+const showGuests = ref(false)
+
+const guestCount = computed(() => users.value.filter(u => u.isGuest).length)
+const visibleUsers = computed(() =>
+  showGuests.value ? users.value : users.value.filter(u => !u.isGuest),
+)
+
+function guestStatus(u: User): { label: string; className: string } {
+  if (!u.guestAvailableAt || new Date(u.guestAvailableAt) <= new Date()) {
+    return { label: '배정 가능', className: 'badge-gray' }
+  }
+  const until = new Date(u.guestAvailableAt).toLocaleString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return { label: `사용 중 · ${until}까지`, className: 'badge-yellow' }
+}
 
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -151,6 +173,10 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
 <template>
   <div>
     <div class="toolbar">
+      <label class="check-label guest-toggle">
+        <input type="checkbox" v-model="showGuests" />
+        게스트 계정 표시 ({{ guestCount }})
+      </label>
       <button class="btn-primary" @click="openCreate">+ 사용자 추가</button>
     </div>
 
@@ -170,9 +196,16 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
           </tr>
         </thead>
         <tbody>
-          <tr v-for="u in users" :key="u.id">
+          <tr v-for="u in visibleUsers" :key="u.id">
             <td>{{ u.id }}</td>
-            <td>{{ u.email }}</td>
+            <td>
+              {{ u.email }}
+              <template v-if="u.isGuest">
+                <br />
+                <span class="badge badge-guest">게스트</span>
+                <span class="badge" :class="guestStatus(u).className">{{ guestStatus(u).label }}</span>
+              </template>
+            </td>
             <td>{{ u.name || '-' }}</td>
             <td>
               <span class="badge" :class="u.isAdultVerified ? 'badge-adult' : 'badge-gray'">
@@ -196,7 +229,7 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
               <button class="btn-sm btn-danger" @click="remove(u)">삭제</button>
             </td>
           </tr>
-          <tr v-if="users.length === 0">
+          <tr v-if="visibleUsers.length === 0">
             <td colspan="6" class="empty">사용자가 없습니다.</td>
           </tr>
         </tbody>
@@ -240,7 +273,8 @@ const statusClass: Record<string, string> = { PENDING: 'badge-yellow', APPROVED:
 </template>
 
 <style scoped>
-.toolbar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.guest-toggle { font-size: 0.85rem; color: #555; }
 .loading { color: #888; }
 .error { color: #e53e3e; }
 
@@ -270,6 +304,7 @@ tr:last-child td { border-bottom: none; }
 .badge-red { background: #fff5f5; color: #c53030; }
 .badge-gray { background: #f0f0f0; color: #888; }
 .badge-adult { background: #fff0f0; color: #c53030; }
+.badge-guest { background: #ede9fe; color: #6d28d9; }
 
 .svc-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
 .svc-name { font-size: 0.8rem; color: #555; flex: 1; }
