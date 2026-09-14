@@ -271,6 +271,20 @@ export default {
     return http.delete(`/admin/game/characters/${id}`)
   },
 
+  // 게임 - 배경 (홈/메인게임 전체화면 + 스테이지 상단 배너 미리보기 공용)
+  getGameBackgrounds() {
+    return http.get('/admin/game/backgrounds')
+  },
+  createGameBackground(body: object) {
+    return http.post('/admin/game/backgrounds', body)
+  },
+  updateGameBackground(id: number, body: object) {
+    return http.patch(`/admin/game/backgrounds/${id}`, body)
+  },
+  deleteGameBackground(id: number) {
+    return http.delete(`/admin/game/backgrounds/${id}`)
+  },
+
   // 앱 설정
   getAppConfigs() {
     return http.get<{ key: string; value: string | null; description: string | null; updatedAt: string }[]>('/admin/game/app-configs')

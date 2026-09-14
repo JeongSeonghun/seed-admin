@@ -34,6 +34,7 @@ async function logout() {
         <router-link :to="{ name: 'game-monster-packs' }" class="nav-item nav-sub">몬스터 팩</router-link>
         <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>
         <router-link :to="{ name: 'game-characters' }" class="nav-item nav-sub">캐릭터</router-link>
+        <router-link :to="{ name: 'game-backgrounds' }" class="nav-item nav-sub">배경</router-link>
         <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>
         <div class="nav-divider" />
         <router-link :to="{ name: 'push' }" class="nav-item">푸시 알림</router-link>

@@ -100,6 +100,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '캐릭터 관리' },
         },
         {
+          path: 'game/backgrounds',
+          name: 'game-backgrounds',
+          component: () => import('@/views/game/BackgroundsView.vue'),
+          meta: { requiresAuth: true, title: '배경 관리' },
+        },
+        {
           path: 'game/app-config',
           name: 'game-app-config',
           component: () => import('@/views/game/AppConfigView.vue'),
