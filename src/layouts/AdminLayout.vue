@@ -30,6 +30,7 @@ async function logout() {
         <div class="nav-divider" />
         <div class="nav-section">게임 관리</div>
         <router-link :to="{ name: 'game-words' }" class="nav-item nav-sub">단어</router-link>
+        <router-link :to="{ name: 'game-episodes' }" class="nav-item nav-sub">에피소드</router-link>
         <router-link :to="{ name: 'game-stages' }" class="nav-item nav-sub">스테이지</router-link>
         <router-link :to="{ name: 'game-monster-packs' }" class="nav-item nav-sub">몬스터 팩</router-link>
         <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>

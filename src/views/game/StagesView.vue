@@ -4,10 +4,12 @@ import api from '@/network'
 
 interface LevelConfig { level: number; count: number }
 interface StageTitle { ko: string; en?: string }
+interface Episode { id: number; title: { ko: string; en?: string } }
 interface Stage {
   id: number
   level: number
   stageNumber: number
+  episodeId?: number | null
   stageType: 'NORMAL' | 'BOSS'
   wordCount: number
   expPerCorrect: number
@@ -24,12 +26,13 @@ interface Stage {
 }
 
 const stages = ref<Stage[]>([])
+const episodes = ref<Episode[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
 const form = ref({
-  id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
+  id: 0, level: 1, stageNumber: 1, episodeId: null as number | null, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
   levelConfigs: [{ level: 1, count: 10 }] as LevelConfig[],
   titleKo: '', titleEn: '',
   expPerCorrect: 5, clearExp: 50, clearCoin: 10,
@@ -43,23 +46,31 @@ const form = ref({
 
 const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
 
+function episodeName(episodeId?: number | null) {
+  if (episodeId == null) return null
+  return episodes.value.find(e => e.id === episodeId)?.title?.ko ?? `#${episodeId}`
+}
+
 async function load() {
   loading.value = true
-  try { stages.value = (await api.getGameStages()).data }
-  finally { loading.value = false }
+  try {
+    const [stagesRes, episodesRes] = await Promise.all([api.getGameStages(), api.getGameEpisodes()])
+    stages.value = stagesRes.data
+    episodes.value = episodesRes.data
+  } finally { loading.value = false }
 }
 onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
+  form.value = { id: 0, level: 1, stageNumber: 1, episodeId: null, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
   showModal.value = true
 }
 
 function openEdit(s: Stage) {
   isEdit.value = true
   form.value = {
-    id: s.id, level: s.level, stageNumber: s.stageNumber, stageType: s.stageType ?? 'NORMAL',
+    id: s.id, level: s.level, stageNumber: s.stageNumber, episodeId: s.episodeId ?? null, stageType: s.stageType ?? 'NORMAL',
     levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
     titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
@@ -94,6 +105,7 @@ async function save() {
     const bossPackageId = form.value.stageType === 'BOSS' ? (form.value.bossPackageId || null) : null
     if (isEdit.value) {
       await api.updateGameStage(form.value.id, {
+        episodeId: form.value.episodeId,
         stageType: form.value.stageType,
         levelConfigs: form.value.levelConfigs,
         title,
@@ -108,6 +120,7 @@ async function save() {
       await api.createGameStage({
         level: form.value.level,
         stageNumber: form.value.stageNumber,
+        episodeId: form.value.episodeId,
         stageType: form.value.stageType,
         levelConfigs: form.value.levelConfigs,
         title,
@@ -146,12 +159,16 @@ function cfgSummary(s: Stage) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>레벨</th><th>스테이지</th><th>타입</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
+          <tr><th>레벨</th><th>스테이지</th><th>에피소드</th><th>타입</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="s in stages" :key="s.id">
             <td><span class="badge badge-blue">Lv{{ s.level }}</span></td>
             <td>Stage {{ s.stageNumber }}</td>
+            <td>
+              <span v-if="episodeName(s.episodeId)" class="badge badge-gray">{{ episodeName(s.episodeId) }}</span>
+              <span v-else class="empty-title">미배정</span>
+            </td>
             <td><span class="badge" :class="s.stageType === 'BOSS' ? 'badge-red' : 'badge-gray'">{{ s.stageType }}</span></td>
             <td class="title-cell">
               <span v-if="s.title?.ko">{{ s.title.ko }}</span>
@@ -167,7 +184,7 @@ function cfgSummary(s: Stage) {
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!stages.length"><td colspan="9" class="empty">스테이지가 없습니다.</td></tr>
+          <tr v-if="!stages.length"><td colspan="10" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -191,6 +208,16 @@ function cfgSummary(s: Stage) {
             <select v-model="form.stageType">
               <option value="NORMAL">NORMAL</option>
               <option value="BOSS">BOSS</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label>에피소드</label>
+            <select v-model="form.episodeId">
+              <option :value="null">미배정</option>
+              <option v-for="ep in episodes" :key="ep.id" :value="ep.id">{{ ep.title?.ko }}</option>
             </select>
           </div>
         </div>

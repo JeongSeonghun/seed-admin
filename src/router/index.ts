@@ -76,6 +76,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '단어 관리' },
         },
         {
+          path: 'game/episodes',
+          name: 'game-episodes',
+          component: () => import('@/views/game/EpisodesView.vue'),
+          meta: { requiresAuth: true, title: '에피소드 관리' },
+        },
+        {
           path: 'game/stages',
           name: 'game-stages',
           component: () => import('@/views/game/StagesView.vue'),

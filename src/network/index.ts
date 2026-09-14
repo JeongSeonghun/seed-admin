@@ -223,6 +223,20 @@ export default {
     return http.delete(`/admin/game/stages/${id}`)
   },
 
+  // 게임 - 에피소드 (스테이지를 테마별로 묶는 챕터)
+  getGameEpisodes() {
+    return http.get('/admin/game/episodes')
+  },
+  createGameEpisode(body: object) {
+    return http.post('/admin/game/episodes', body)
+  },
+  updateGameEpisode(id: number, body: object) {
+    return http.patch(`/admin/game/episodes/${id}`, body)
+  },
+  deleteGameEpisode(id: number) {
+    return http.delete(`/admin/game/episodes/${id}`)
+  },
+
   // 게임 - 몬스터 팩
   getGameMonsterPacks() {
     return http.get('/admin/game/monster-packs')
