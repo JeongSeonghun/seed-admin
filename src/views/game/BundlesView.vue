@@ -52,7 +52,7 @@ async function save() {
   saving.value = true
   try {
     const packageIds = parsePackageIds()
-    if (!packageIds.length) { alert('패키지 ID를 1개 이상 입력해주세요.'); return }
+    if (!packageIds.length) { alert('몬스터 팩 ID를 1개 이상 입력해주세요.'); return }
     const body = { name: form.value.name, description: form.value.description || undefined, coinPrice: form.value.coinPrice, contentCategory: form.value.contentCategory, isActive: form.value.isActive, packageIds }
     if (isEdit.value) await api.updateGameBundle(form.value.id, body)
     else await api.createGameBundle(body)
@@ -78,7 +78,7 @@ async function remove(b: Bundle) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>이름</th><th>설명</th><th>카테고리</th><th>코인</th><th>포함 패키지 ID</th><th>활성</th><th>액션</th></tr>
+          <tr><th>이름</th><th>설명</th><th>카테고리</th><th>코인</th><th>포함 몬스터 팩 ID</th><th>활성</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="b in bundles" :key="b.id">
@@ -111,7 +111,7 @@ async function remove(b: Bundle) {
             <input v-model.number="form.coinPrice" type="number" min="0" />
           </div>
         </div>
-        <label>포함 패키지 ID <span class="hint">쉼표로 구분 (예: 1, 2, 3)</span></label>
+        <label>포함 몬스터 팩 ID <span class="hint">쉼표로 구분 (예: 1, 2, 3)</span></label>
         <input v-model="form.packageIdsStr" type="text" placeholder="1, 2, 3" />
         <label>카테고리</label>
         <select v-model="form.contentCategory">

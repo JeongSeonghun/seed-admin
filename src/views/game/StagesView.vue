@@ -23,6 +23,7 @@ interface Stage {
   characterDropRate?: number
   normalPackageIds?: number[] | null
   bossPackageId?: number | null
+  isActive: boolean
 }
 
 const stages = ref<Stage[]>([])
@@ -42,6 +43,7 @@ const form = ref({
   characterDropRate: 0.3,
   normalPackageIdsText: '',
   bossPackageId: null as number | null,
+  isActive: true,
 })
 
 const totalWordCount = computed(() => form.value.levelConfigs.reduce((s, c) => s + (c.count || 0), 0))
@@ -63,7 +65,7 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, episodeId: null, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null }
+  form.value = { id: 0, level: 1, stageNumber: 1, episodeId: null, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null, isActive: true }
   showModal.value = true
 }
 
@@ -77,6 +79,7 @@ function openEdit(s: Stage) {
     rewardPackageId: s.rewardPackageId ?? null, rewardCharacterId: s.rewardCharacterId ?? null, rewardBackgroundId: s.rewardBackgroundId ?? null, characterDropRate: s.characterDropRate ?? 0.3,
     normalPackageIdsText: s.normalPackageIds?.join(', ') ?? '',
     bossPackageId: s.bossPackageId ?? null,
+    isActive: s.isActive,
   }
   showModal.value = true
 }
@@ -115,6 +118,7 @@ async function save() {
         ...rewardFields,
         normalPackageIds,
         bossPackageId,
+        isActive: form.value.isActive,
       })
     } else {
       await api.createGameStage({
@@ -130,6 +134,7 @@ async function save() {
         ...rewardFields,
         normalPackageIds,
         bossPackageId,
+        isActive: form.value.isActive,
       })
     }
     showModal.value = false
@@ -159,7 +164,7 @@ function cfgSummary(s: Stage) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>레벨</th><th>스테이지</th><th>에피소드</th><th>타입</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
+          <tr><th>레벨</th><th>스테이지</th><th>에피소드</th><th>타입</th><th>상태</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
         </thead>
         <tbody>
           <tr v-for="s in stages" :key="s.id">
@@ -170,6 +175,7 @@ function cfgSummary(s: Stage) {
               <span v-else class="empty-title">미배정</span>
             </td>
             <td><span class="badge" :class="s.stageType === 'BOSS' ? 'badge-red' : 'badge-gray'">{{ s.stageType }}</span></td>
+            <td><span class="badge" :class="s.isActive ? 'badge-green' : 'badge-gray'">{{ s.isActive ? '활성' : '비활성' }}</span></td>
             <td class="title-cell">
               <span v-if="s.title?.ko">{{ s.title.ko }}</span>
               <span v-else class="empty-title">-</span>
@@ -184,7 +190,7 @@ function cfgSummary(s: Stage) {
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!stages.length"><td colspan="10" class="empty">스테이지가 없습니다.</td></tr>
+          <tr v-if="!stages.length"><td colspan="11" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -262,13 +268,13 @@ function cfgSummary(s: Stage) {
         </div>
         <div v-if="form.stageType === 'NORMAL'" class="form-row">
           <div class="form-col">
-            <label>배경 패키지 ID <span class="label-sub">(쉼표 구분, 미설정 시 보유 패키지 랜덤)</span></label>
+            <label>몬스터 팩 ID <span class="label-sub">(쉼표 구분, 미설정 시 보유 몬스터 팩 랜덤)</span></label>
             <input v-model="form.normalPackageIdsText" type="text" placeholder="예: 1, 2, 3" />
           </div>
         </div>
         <div v-if="form.stageType === 'BOSS'" class="form-row">
           <div class="form-col">
-            <label>보스 배경 패키지 ID <span class="label-sub">(미설정 시 보유 BOSS 패키지 랜덤)</span></label>
+            <label>보스 몬스터 팩 ID <span class="label-sub">(미설정 시 보유 BOSS 몬스터 팩 랜덤)</span></label>
             <input v-model.number="form.bossPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
           </div>
         </div>
@@ -276,7 +282,7 @@ function cfgSummary(s: Stage) {
         <label class="section-label">클리어 보상</label>
         <div class="form-row">
           <div class="form-col">
-            <label>보상 패키지 ID</label>
+            <label>보상 몬스터 팩 ID</label>
             <input v-model.number="form.rewardPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
           </div>
           <div class="form-col">
@@ -291,6 +297,9 @@ function cfgSummary(s: Stage) {
             <label>획득 확률 <span class="label-sub">(0~1, 캐릭터·배경 공용)</span></label>
             <input v-model.number="form.characterDropRate" type="number" min="0" max="1" step="0.05" />
           </div>
+        </div>
+        <div class="check-row">
+          <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성 <span class="label-sub">(끄면 유저 화면에서 숨겨짐 - 테스트용 스테이지 정리에 사용)</span></label>
         </div>
         <div class="modal-actions">
           <button class="btn-ghost" @click="showModal = false">취소</button>
@@ -320,6 +329,7 @@ tr:last-child td { border-bottom: none; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }
 .badge-red { background: #fff5f5; color: #c53030; }
 .badge-gray { background: #f0f0f0; color: #888; }
+.badge-green { background: #f0fff4; color: #276749; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -346,5 +356,7 @@ tr:last-child td { border-bottom: none; }
 .btn-cfg-del { background: none; border: none; cursor: pointer; color: #e53e3e; font-size: 0.9rem; padding: 0 0.25rem; }
 .btn-cfg-del:disabled { opacity: 0.3; cursor: not-allowed; }
 .btn-add-cfg { align-self: flex-start; padding: 0.3rem 0.75rem; background: white; border: 1px dashed #4a6cf7; border-radius: 6px; color: #4a6cf7; cursor: pointer; font-size: 0.8rem; margin-top: 0.25rem; }
+.check-row { display: flex; gap: 1rem; margin-top: 0.25rem; }
+.check-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; cursor: pointer; font-weight: normal !important; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
 </style>
