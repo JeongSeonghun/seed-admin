@@ -4,7 +4,7 @@ import api from '@/network'
 
 interface LevelConfig { level: number; count: number }
 interface StageTitle { ko: string; en?: string }
-interface Episode { id: number; title: { ko: string; en?: string } }
+interface Episode { id: number; title: { ko: string; en?: string }; sortOrder: number }
 interface Stage {
   id: number
   level: number
@@ -33,7 +33,7 @@ const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
 const form = ref({
-  id: 0, level: 1, stageNumber: 1, episodeId: null as number | null, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
+  id: 0, stageNumber: 1, episodeId: null as number | null, stageType: 'NORMAL' as 'NORMAL' | 'BOSS',
   levelConfigs: [{ level: 1, count: 10 }] as LevelConfig[],
   titleKo: '', titleEn: '',
   expPerCorrect: 5, clearExp: 50, clearCoin: 10,
@@ -53,6 +53,33 @@ function episodeName(episodeId?: number | null) {
   return episodes.value.find(e => e.id === episodeId)?.title?.ko ?? `#${episodeId}`
 }
 
+// 스테이지 번호는 이제 (episodeId, stageNumber) 기준으로 유니크해야 하므로(레벨 기준 아님),
+// 에피소드를 고르면 그 에피소드 안에서 다음으로 쓸 수 있는 번호를 미리 채워준다(수동 변경 가능).
+function nextStageNumberFor(episodeId: number | null): number {
+  const inSameEpisode = stages.value.filter(s => (s.episodeId ?? null) === episodeId)
+  if (!inSameEpisode.length) return 1
+  return Math.max(...inSameEpisode.map(s => s.stageNumber)) + 1
+}
+
+function onEpisodeChange() {
+  if (!isEdit.value) {
+    form.value.stageNumber = nextStageNumberFor(form.value.episodeId)
+  }
+}
+
+// 목록은 서버가 level 기준으로 내려주는데(레거시 정렬), 지금 설계는 에피소드가 진짜 단위라
+// 에피소드 순서(sortOrder) → 스테이지 번호 순으로 화면에서 다시 정렬해서 보여준다.
+// 에피소드 미배정 스테이지는 맨 뒤로 보낸다.
+const sortedStages = computed(() => {
+  const orderOf = new Map(episodes.value.map(e => [e.id, e.sortOrder]))
+  return [...stages.value].sort((a, b) => {
+    const oa = a.episodeId != null ? (orderOf.get(a.episodeId) ?? Infinity) : Infinity
+    const ob = b.episodeId != null ? (orderOf.get(b.episodeId) ?? Infinity) : Infinity
+    if (oa !== ob) return oa - ob
+    return a.stageNumber - b.stageNumber
+  })
+})
+
 async function load() {
   loading.value = true
   try {
@@ -65,14 +92,14 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, level: 1, stageNumber: 1, episodeId: null, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null, isActive: true }
+  form.value = { id: 0, stageNumber: nextStageNumberFor(null), episodeId: null, stageType: 'NORMAL', levelConfigs: [{ level: 1, count: 10 }], titleKo: '', titleEn: '', expPerCorrect: 5, clearExp: 50, clearCoin: 10, rewardPackageId: null, rewardCharacterId: null, rewardBackgroundId: null, characterDropRate: 0.3, normalPackageIdsText: '', bossPackageId: null, isActive: true }
   showModal.value = true
 }
 
 function openEdit(s: Stage) {
   isEdit.value = true
   form.value = {
-    id: s.id, level: s.level, stageNumber: s.stageNumber, episodeId: s.episodeId ?? null, stageType: s.stageType ?? 'NORMAL',
+    id: s.id, stageNumber: s.stageNumber, episodeId: s.episodeId ?? null, stageType: s.stageType ?? 'NORMAL',
     levelConfigs: s.levelConfigs?.length ? s.levelConfigs.map(c => ({ ...c })) : [{ level: s.level, count: s.wordCount }],
     titleKo: s.title?.ko ?? '', titleEn: s.title?.en ?? '',
     expPerCorrect: s.expPerCorrect, clearExp: s.clearExp, clearCoin: s.clearCoin,
@@ -122,7 +149,7 @@ async function save() {
       })
     } else {
       await api.createGameStage({
-        level: form.value.level,
+        // level은 서버가 levelConfigs에서 자동으로 대표값을 뽑는다(admin이 안 정해도 됨).
         stageNumber: form.value.stageNumber,
         episodeId: form.value.episodeId,
         stageType: form.value.stageType,
@@ -164,16 +191,16 @@ function cfgSummary(s: Stage) {
     <div v-else class="table-wrap">
       <table>
         <thead>
-          <tr><th>레벨</th><th>스테이지</th><th>에피소드</th><th>타입</th><th>상태</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
+          <tr><th>에피소드</th><th>스테이지</th><th>레벨</th><th>타입</th><th>상태</th><th>타이틀</th><th>단어 구성</th><th>총 단어</th><th>정답 경험치</th><th>클리어 보상</th><th>액션</th></tr>
         </thead>
         <tbody>
-          <tr v-for="s in stages" :key="s.id">
-            <td><span class="badge badge-blue">Lv{{ s.level }}</span></td>
-            <td>Stage {{ s.stageNumber }}</td>
+          <tr v-for="s in sortedStages" :key="s.id">
             <td>
               <span v-if="episodeName(s.episodeId)" class="badge badge-gray">{{ episodeName(s.episodeId) }}</span>
               <span v-else class="empty-title">미배정</span>
             </td>
+            <td>Stage {{ s.stageNumber }}</td>
+            <td><span class="badge badge-blue">Lv{{ s.level }}</span></td>
             <td><span class="badge" :class="s.stageType === 'BOSS' ? 'badge-red' : 'badge-gray'">{{ s.stageType }}</span></td>
             <td><span class="badge" :class="s.isActive ? 'badge-green' : 'badge-gray'">{{ s.isActive ? '활성' : '비활성' }}</span></td>
             <td class="title-cell">
@@ -190,7 +217,7 @@ function cfgSummary(s: Stage) {
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!stages.length"><td colspan="11" class="empty">스테이지가 없습니다.</td></tr>
+          <tr v-if="!sortedStages.length"><td colspan="11" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>
       </table>
     </div>
@@ -200,13 +227,14 @@ function cfgSummary(s: Stage) {
         <h3>{{ isEdit ? '스테이지 편집' : '스테이지 추가' }}</h3>
         <div class="form-row">
           <div class="form-col">
-            <label>카테고리 레벨</label>
-            <select v-model="form.level" :disabled="isEdit">
-              <option v-for="l in 10" :key="l" :value="l">{{ l }}</option>
+            <label>에피소드</label>
+            <select v-model="form.episodeId" @change="onEpisodeChange">
+              <option :value="null">미배정</option>
+              <option v-for="ep in episodes" :key="ep.id" :value="ep.id">{{ ep.title?.ko }}</option>
             </select>
           </div>
           <div class="form-col">
-            <label>스테이지 번호</label>
+            <label>스테이지 번호 <span class="label-sub">(같은 에피소드 안에서 다음 번호 자동 제안)</span></label>
             <input v-model.number="form.stageNumber" type="number" min="1" :disabled="isEdit" />
           </div>
           <div class="form-col">
@@ -214,16 +242,6 @@ function cfgSummary(s: Stage) {
             <select v-model="form.stageType">
               <option value="NORMAL">NORMAL</option>
               <option value="BOSS">BOSS</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-col">
-            <label>에피소드</label>
-            <select v-model="form.episodeId">
-              <option :value="null">미배정</option>
-              <option v-for="ep in episodes" :key="ep.id" :value="ep.id">{{ ep.title?.ko }}</option>
             </select>
           </div>
         </div>
