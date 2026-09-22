@@ -324,6 +324,17 @@ export default {
     return http.get('/admin/push/tokens', { params: appId ? { appId } : undefined })
   },
 
+  // 푸시 알림 - 관리자 본인 수신 (모바일 페이지)
+  adminPushRegisterSelfToken(body: { token: string; platform?: 'android' | 'ios' | 'web' }) {
+    return http.post('/admin/push/self/token', body)
+  },
+  adminPushRemoveSelfToken(token: string) {
+    return http.delete('/admin/push/self/token', { data: { token } })
+  },
+  adminPushMyNotifications(limit?: number) {
+    return http.get('/admin/push/self/notifications', { params: limit ? { limit } : undefined })
+  },
+
   // 이미지 업로드
   uploadImage(file: File) {
     const form = new FormData()

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/network'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const email = ref('')
@@ -18,7 +19,8 @@ async function handleLogin() {
   try {
     const res = await api.adminLogin({ email: email.value, password: password.value })
     auth.setTokens(res.data.accessToken, res.data.refreshToken)
-    router.push({ name: 'dashboard' })
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    router.push(redirect ?? { name: 'dashboard' })
   } catch (e: any) {
     errorMsg.value = e.response?.data?.message ?? '로그인에 실패했습니다.'
   } finally {

@@ -144,6 +144,26 @@ const router = createRouter({
       ],
     },
     {
+      path: '/m',
+      component: () => import('@/layouts/MobileLayout.vue'),
+      meta: { requiresAuth: true },
+      redirect: '/m/smartfarm',
+      children: [
+        {
+          path: 'smartfarm',
+          name: 'm-smartfarm',
+          component: () => import('@/views/mobile/MobileSmartfarmView.vue'),
+          meta: { requiresAuth: true, title: '스마트팜' },
+        },
+        {
+          path: 'notifications',
+          name: 'm-notifications',
+          component: () => import('@/views/mobile/MobileNotificationsView.vue'),
+          meta: { requiresAuth: true, title: '알림함' },
+        },
+      ],
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/login',
     },
@@ -152,7 +172,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isLoggedIn) return { name: 'login' }
+  if (to.meta.requiresAuth && !auth.isLoggedIn) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.name === 'login' && auth.isLoggedIn) return { name: 'dashboard' }
 })
 
