@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '@/network'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 interface Word {
   id: number
@@ -152,7 +155,7 @@ async function openSimilar(w: Word) {
         </select>
         <span class="count">총 {{ words.length }}개</span>
       </div>
-      <div class="toolbar-right">
+      <div v-if="!auth.isGuestAdmin" class="toolbar-right">
         <label class="btn-import" :class="{ disabled: importing }">
           {{ importing ? '가져오는 중...' : '파일 가져오기' }}
           <input type="file" accept=".xlsx,.xls,.json,.csv,.txt" hidden :disabled="importing" @change="handleImport" />
@@ -194,8 +197,10 @@ async function openSimilar(w: Word) {
             </td>
             <td>
               <button class="btn-sm" :disabled="w.embeddingPending" @click="openSimilar(w)">유사 단어</button>
-              <button class="btn-sm" @click="openEdit(w)">편집</button>
-              <button class="btn-sm btn-danger" @click="remove(w)">삭제</button>
+              <template v-if="!auth.isGuestAdmin">
+                <button class="btn-sm" @click="openEdit(w)">편집</button>
+                <button class="btn-sm btn-danger" @click="remove(w)">삭제</button>
+              </template>
             </td>
           </tr>
           <tr v-if="!words.length"><td colspan="8" class="empty">단어가 없습니다.</td></tr>

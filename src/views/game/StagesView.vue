@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import api from '@/network'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 interface LevelConfig { level: number; count: number }
 interface StageTitle { ko: string; en?: string }
@@ -184,7 +187,7 @@ function cfgSummary(s: Stage) {
 
 <template>
   <div>
-    <div class="toolbar">
+    <div v-if="!auth.isGuestAdmin" class="toolbar">
       <button class="btn-primary" @click="openCreate">+ 스테이지 추가</button>
     </div>
     <div v-if="loading" class="loading">불러오는 중...</div>
@@ -212,10 +215,11 @@ function cfgSummary(s: Stage) {
             <td>{{ s.wordCount }}개</td>
             <td>{{ s.expPerCorrect }} exp</td>
             <td>{{ s.clearExp }} exp + {{ s.clearCoin }} coin</td>
-            <td>
+            <td v-if="!auth.isGuestAdmin">
               <button class="btn-sm" @click="openEdit(s)">편집</button>
               <button class="btn-sm btn-danger" @click="remove(s)">삭제</button>
             </td>
+            <td v-else>-</td>
           </tr>
           <tr v-if="!sortedStages.length"><td colspan="11" class="empty">스테이지가 없습니다.</td></tr>
         </tbody>

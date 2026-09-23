@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '@/network'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 interface Episode {
   id: number
@@ -80,7 +83,7 @@ async function remove(ep: Episode) {
 
 <template>
   <div>
-    <div class="toolbar">
+    <div v-if="!auth.isGuestAdmin" class="toolbar">
       <button class="btn-primary" @click="openCreate">+ 에피소드 추가</button>
     </div>
     <p class="desc">스테이지를 테마별로 묶는 챕터입니다. 배너 이미지는 유저가 상점에서 장착하는 개인 배경과는 별개로, 이 에피소드 고유의 고정 아트입니다.</p>
@@ -97,7 +100,7 @@ async function remove(ep: Episode) {
               <span class="badge" :class="ep.isActive ? 'badge-green' : 'badge-gray'">{{ ep.isActive ? '활성' : '비활성' }}</span>
             </div>
           </div>
-          <div class="card-actions">
+          <div v-if="!auth.isGuestAdmin" class="card-actions">
             <button class="btn-sm" @click="openEdit(ep)">편집</button>
             <button class="btn-sm btn-danger" @click="remove(ep)">삭제</button>
           </div>
