@@ -13,8 +13,16 @@ interface DeviceToken {
   token: string; createdAt: string; updatedAt: string
 }
 
+interface AppIdOption { name: string; label: string }
+
+// Service 테이블에 없는 내부 전용 appId (admin 페이지 접근은 Role로 통제되므로 서비스 옵트인 대상이 아님)
+const INTERNAL_APP_IDS: AppIdOption[] = [
+  { name: 'seed_admin', label: 'SEED Admin' },
+]
+
 const logs = ref<PushLog[]>([])
 const tokens = ref<DeviceToken[]>([])
+const appIdOptions = ref<AppIdOption[]>([...INTERNAL_APP_IDS])
 const loading = ref(false)
 const sending = ref(false)
 const tab = ref<'send' | 'logs' | 'tokens'>('send')
@@ -25,10 +33,22 @@ const form = ref({
   userIdsText: '',
   title: '',
   body: '',
-  appId: 'word-game',
+  appId: 'word_game',
 })
 
-onMounted(loadLogs)
+async function loadAppIdOptions() {
+  try {
+    const services = (await api.getServices()).data as { name: string; label: string }[]
+    appIdOptions.value = [...services, ...INTERNAL_APP_IDS]
+  } catch {
+    appIdOptions.value = [...INTERNAL_APP_IDS]
+  }
+}
+
+onMounted(() => {
+  loadAppIdOptions()
+  loadLogs()
+})
 
 async function loadLogs() {
   loading.value = true
@@ -45,7 +65,7 @@ async function loadTokens() {
 }
 
 function onTypeChange() {
-  if (form.value.type === 'event' && !form.value.appId) form.value.appId = 'word-game'
+  if (form.value.type === 'event' && !form.value.appId) form.value.appId = 'word_game'
 }
 
 function switchTab(t: 'send' | 'logs' | 'tokens') {
@@ -105,8 +125,7 @@ function truncateToken(token: string) {
         <div class="form-col">
           <label>앱 ID</label>
           <select v-model="form.appId">
-            <option value="word-game">word-game</option>
-            <option value="smart-farm">smart-farm</option>
+            <option v-for="opt in appIdOptions" :key="opt.name" :value="opt.name">{{ opt.label }} ({{ opt.name }})</option>
             <option v-if="form.type !== 'event'" value="">전체</option>
           </select>
         </div>
@@ -169,8 +188,7 @@ function truncateToken(token: string) {
       <div class="filter-bar">
         <select v-model="tokenAppId" @change="loadTokens" class="filter-select">
           <option value="">전체 앱</option>
-          <option value="word-game">word-game</option>
-          <option value="smart-farm">smart-farm</option>
+          <option v-for="opt in appIdOptions" :key="opt.name" :value="opt.name">{{ opt.label }} ({{ opt.name }})</option>
         </select>
         <span class="token-count">총 {{ tokens.length }}개</span>
       </div>
