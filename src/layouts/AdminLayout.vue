@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/network'
@@ -6,6 +7,7 @@ import api from '@/network'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const isGuestAdmin = computed(() => auth.isGuestAdmin)
 
 async function logout() {
   try { await api.adminLogout() } catch { /* proceed anyway */ }
@@ -20,41 +22,50 @@ async function logout() {
       <div class="logo">SEED Admin</div>
       <nav>
         <router-link :to="{ name: 'dashboard' }" class="nav-item">대시보드</router-link>
-        <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
-        <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
-        <div class="nav-divider" />
-        <router-link :to="{ name: 'services' }" class="nav-item">서비스 관리</router-link>
-        <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
-        <router-link :to="{ name: 'monitor' }" class="nav-item">서버 모니터링</router-link>
-        <router-link :to="{ name: 'versions' }" class="nav-item">버전 관리</router-link>
+        <template v-if="!isGuestAdmin">
+          <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
+          <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
+          <div class="nav-divider" />
+          <router-link :to="{ name: 'services' }" class="nav-item">서비스 관리</router-link>
+          <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
+          <router-link :to="{ name: 'monitor' }" class="nav-item">서버 모니터링</router-link>
+          <router-link :to="{ name: 'versions' }" class="nav-item">버전 관리</router-link>
+        </template>
         <div class="nav-divider" />
         <div class="nav-section">게임 관리</div>
         <router-link :to="{ name: 'game-words' }" class="nav-item nav-sub">단어</router-link>
         <router-link :to="{ name: 'game-episodes' }" class="nav-item nav-sub">에피소드</router-link>
         <router-link :to="{ name: 'game-stages' }" class="nav-item nav-sub">스테이지</router-link>
-        <router-link :to="{ name: 'game-monster-packs' }" class="nav-item nav-sub">몬스터 팩</router-link>
-        <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>
-        <router-link :to="{ name: 'game-characters' }" class="nav-item nav-sub">캐릭터</router-link>
-        <router-link :to="{ name: 'game-backgrounds' }" class="nav-item nav-sub">배경</router-link>
-        <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>
-        <div class="nav-divider" />
-        <router-link :to="{ name: 'push' }" class="nav-item">푸시 알림</router-link>
-        <div class="nav-divider" />
-        <div class="nav-section">스마트팜</div>
-        <router-link :to="{ name: 'smartfarm' }" class="nav-item nav-sub">디바이스 관리</router-link>
-        <div class="nav-divider" />
-        <div class="nav-section">AI Agent</div>
-        <router-link :to="{ name: 'agent' }" class="nav-item nav-sub">Agent 콘솔</router-link>
-        <router-link :to="{ name: 'agent-prompts' }" class="nav-item nav-sub">프롬프트 관리</router-link>
-        <router-link :to="{ name: 'agent-logs' }" class="nav-item nav-sub">로그 조회</router-link>
-        <div class="nav-divider" />
-        <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
+        <template v-if="!isGuestAdmin">
+          <router-link :to="{ name: 'game-monster-packs' }" class="nav-item nav-sub">몬스터 팩</router-link>
+          <router-link :to="{ name: 'game-bundles' }" class="nav-item nav-sub">번들</router-link>
+          <router-link :to="{ name: 'game-characters' }" class="nav-item nav-sub">캐릭터</router-link>
+          <router-link :to="{ name: 'game-backgrounds' }" class="nav-item nav-sub">배경</router-link>
+          <router-link :to="{ name: 'game-app-config' }" class="nav-item nav-sub">앱 설정</router-link>
+        </template>
+        <template v-if="!isGuestAdmin">
+          <div class="nav-divider" />
+          <router-link :to="{ name: 'push' }" class="nav-item">푸시 알림</router-link>
+          <div class="nav-divider" />
+          <div class="nav-section">스마트팜</div>
+          <router-link :to="{ name: 'smartfarm' }" class="nav-item nav-sub">디바이스 관리</router-link>
+          <div class="nav-divider" />
+          <div class="nav-section">AI Agent</div>
+          <router-link :to="{ name: 'agent' }" class="nav-item nav-sub">Agent 콘솔</router-link>
+          <router-link :to="{ name: 'agent-prompts' }" class="nav-item nav-sub">프롬프트 관리</router-link>
+          <router-link :to="{ name: 'agent-logs' }" class="nav-item nav-sub">로그 조회</router-link>
+          <div class="nav-divider" />
+          <router-link :to="{ name: 'my' }" class="nav-item">내 정보</router-link>
+        </template>
       </nav>
     </aside>
 
     <div class="main">
       <header class="header">
-        <span class="page-title">{{ route.meta.title }}</span>
+        <span class="page-title">
+          {{ route.meta.title }}
+          <span v-if="isGuestAdmin" class="guest-badge">게스트 (읽기 전용)</span>
+        </span>
         <button class="logout-btn" @click="logout">로그아웃</button>
       </header>
       <div class="content">
@@ -140,6 +151,16 @@ nav {
   font-weight: 600;
   font-size: 1rem;
   color: #1a1a2e;
+}
+.guest-badge {
+  margin-left: 0.6rem;
+  padding: 0.15rem 0.55rem;
+  background: #fff3cd;
+  color: #8a6d1a;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
 }
 .logout-btn {
   padding: 0.35rem 0.9rem;

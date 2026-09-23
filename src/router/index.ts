@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/network'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,7 +20,7 @@ const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('@/views/DashboardView.vue'),
-          meta: { requiresAuth: true, title: '대시보드' },
+          meta: { requiresAuth: true, title: '대시보드', guestAllowed: true },
         },
         {
           path: 'managers',
@@ -73,19 +74,19 @@ const router = createRouter({
           path: 'game/words',
           name: 'game-words',
           component: () => import('@/views/game/WordsView.vue'),
-          meta: { requiresAuth: true, title: '단어 관리' },
+          meta: { requiresAuth: true, title: '단어 관리', guestAllowed: true },
         },
         {
           path: 'game/episodes',
           name: 'game-episodes',
           component: () => import('@/views/game/EpisodesView.vue'),
-          meta: { requiresAuth: true, title: '에피소드 관리' },
+          meta: { requiresAuth: true, title: '에피소드 관리', guestAllowed: true },
         },
         {
           path: 'game/stages',
           name: 'game-stages',
           component: () => import('@/views/game/StagesView.vue'),
-          meta: { requiresAuth: true, title: '스테이지 관리' },
+          meta: { requiresAuth: true, title: '스테이지 관리', guestAllowed: true },
         },
         {
           path: 'game/monster-packs',
@@ -170,10 +171,24 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isLoggedIn) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.name === 'login' && auth.isLoggedIn) return { name: 'dashboard' }
+
+  if (to.meta.requiresAuth && auth.isLoggedIn && auth.roles.length === 0) {
+    try {
+      const me = await api.getMe()
+      auth.setRoles(me.data.roles ?? [])
+    } catch {
+      // roles를 못 가져와도 일단 진행 — 백엔드 가드가 최종적으로 막아준다.
+    }
+  }
+
+  // GUEST_ADMIN은 화면 단위 허용목록(guestAllowed)에 없는 라우트는 아예 접근 못 하게 막는다.
+  if (to.meta.requiresAuth && auth.isGuestAdmin && !to.meta.guestAllowed) {
+    return { name: 'dashboard' }
+  }
 })
 
 export default router
