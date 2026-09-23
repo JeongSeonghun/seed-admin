@@ -14,6 +14,8 @@ interface User {
 const users = ref<User[]>([])
 const loading = ref(true)
 const errorMsg = ref('')
+const isSuperAdmin = ref(false)
+const myId = ref<number | null>(null)
 
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -33,7 +35,16 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  load()
+  try {
+    const me = await api.getMe()
+    isSuperAdmin.value = me.data.roles?.includes('SUPER_ADMIN') ?? false
+    myId.value = me.data.id
+  } catch {
+    isSuperAdmin.value = false
+  }
+})
 
 function openCreate() {
   isEdit.value = false
@@ -127,7 +138,11 @@ async function remove(u: User) {
             </td>
             <td>
               <button class="btn-sm" @click="openEdit(u)">편집</button>
-              <button class="btn-sm btn-danger" @click="remove(u)">삭제</button>
+              <button
+                class="btn-sm btn-danger"
+                :disabled="u.id === myId || (u.roles.includes('SUPER_ADMIN') && !isSuperAdmin)"
+                @click="remove(u)"
+              >삭제</button>
             </td>
           </tr>
           <tr v-if="users.length === 0">
@@ -161,10 +176,16 @@ async function remove(u: User) {
             ADMIN
           </label>
           <label class="check-label">
-            <input type="checkbox" :checked="form.roles.includes('SUPER_ADMIN')" @change="toggleRole('SUPER_ADMIN')" />
+            <input
+              type="checkbox"
+              :checked="form.roles.includes('SUPER_ADMIN')"
+              :disabled="!isSuperAdmin"
+              @change="toggleRole('SUPER_ADMIN')"
+            />
             SUPER_ADMIN
           </label>
         </div>
+        <p v-if="!isSuperAdmin" class="hint-text">SUPER_ADMIN 권한 부여는 SUPER_ADMIN만 할 수 있습니다.</p>
 
         <div class="modal-actions">
           <button class="btn-ghost" @click="showModal = false">취소</button>
@@ -241,6 +262,8 @@ tr:last-child td { border-bottom: none; }
 .btn-sm:hover { background: #e2e8f0; }
 .btn-danger { color: #e53e3e; border-color: #fed7d7; }
 .btn-danger:hover { background: #fff5f5; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; background: none; }
+.hint-text { font-size: 0.75rem; color: #aaa; margin-top: 0.2rem; }
 
 .overlay {
   position: fixed;
