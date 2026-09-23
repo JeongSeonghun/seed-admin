@@ -35,6 +35,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: '사용자 관리' },
         },
         {
+          path: 'access-logs',
+          name: 'access-logs',
+          component: () => import('@/views/AccessLogsView.vue'),
+          meta: { requiresAuth: true, title: '접근 기록', superAdminOnly: true },
+        },
+        {
           path: 'notices',
           name: 'notices',
           component: () => import('@/views/NoticesView.vue'),
@@ -187,6 +193,11 @@ router.beforeEach(async (to) => {
 
   // GUEST_ADMIN은 화면 단위 허용목록(guestAllowed)에 없는 라우트는 아예 접근 못 하게 막는다.
   if (to.meta.requiresAuth && auth.isGuestAdmin && !to.meta.guestAllowed) {
+    return { name: 'dashboard' }
+  }
+
+  // 접근 기록처럼 SUPER_ADMIN만 봐야 하는 화면은 ADMIN/GUEST_ADMIN 접근을 막는다.
+  if (to.meta.requiresAuth && to.meta.superAdminOnly && !auth.roles.includes('SUPER_ADMIN')) {
     return { name: 'dashboard' }
   }
 })

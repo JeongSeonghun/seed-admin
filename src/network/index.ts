@@ -139,6 +139,11 @@ export default {
     return http.delete(`/admin/users/${id}`)
   },
 
+  // 개인정보 접근 기록
+  getAccessLogs(params?: { adminId?: number; targetUserId?: number; from?: string; to?: string; limit?: number }) {
+    return http.get('/admin/access-logs', { params })
+  },
+
   // 공지사항
   getNotices() {
     return http.get('/admin/notices')

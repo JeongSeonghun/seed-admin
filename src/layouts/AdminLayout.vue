@@ -8,6 +8,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const isGuestAdmin = computed(() => auth.isGuestAdmin)
+const isSuperAdmin = computed(() => auth.roles.includes('SUPER_ADMIN'))
 
 async function logout() {
   try { await api.adminLogout() } catch { /* proceed anyway */ }
@@ -25,6 +26,7 @@ async function logout() {
         <template v-if="!isGuestAdmin">
           <router-link :to="{ name: 'managers' }" class="nav-item">관리자 관리</router-link>
           <router-link :to="{ name: 'users' }" class="nav-item">사용자 관리</router-link>
+          <router-link v-if="isSuperAdmin" :to="{ name: 'access-logs' }" class="nav-item">접근 기록</router-link>
           <div class="nav-divider" />
           <router-link :to="{ name: 'services' }" class="nav-item">서비스 관리</router-link>
           <router-link :to="{ name: 'notices' }" class="nav-item">공지사항</router-link>
