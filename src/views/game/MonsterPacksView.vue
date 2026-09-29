@@ -55,6 +55,12 @@ async function remove(p: MonsterPack) {
 
 function openImages(p: MonsterPack) { selectedPack.value = p; showImgPanel.value = true }
 
+// 목록에 보여줄 대표 이미지 — sort_order가 가장 앞선 것(BOSS는 0=풀체력 단계).
+function repImageUrl(p: MonsterPack): string | null {
+  const sorted = p.images.slice().sort((a, b) => a.sortOrder - b.sortOrder)
+  return sorted[0]?.imageUrl ?? null
+}
+
 async function uploadImage(pack: MonsterPack, e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -86,10 +92,15 @@ async function removeImage(pack: MonsterPack, imgId: number) {
       <div v-else class="table-wrap">
         <table>
           <thead>
-            <tr><th>이름</th><th>타입</th><th>카테고리</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
+            <tr><th>썸네일</th><th>ID</th><th>이름</th><th>타입</th><th>카테고리</th><th>코인</th><th>이미지수</th><th>상태</th><th>액션</th></tr>
           </thead>
           <tbody>
             <tr v-for="p in packs" :key="p.id" :class="{ selected: selectedPack?.id === p.id }">
+              <td>
+                <img v-if="repImageUrl(p)" :src="repImageUrl(p)!" alt="" class="thumb-sm" />
+                <div v-else class="thumb-sm placeholder">-</div>
+              </td>
+              <td class="id-cell">#{{ p.id }}</td>
               <td>{{ p.name }}</td>
               <td><span class="badge" :class="p.type === 'BOSS' ? 'badge-red' : 'badge-blue'">{{ p.type }}</span></td>
               <td><span class="badge" :class="p.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ p.contentCategory === 'ADULT' ? '성인' : '일반' }}</span></td>
@@ -105,7 +116,7 @@ async function removeImage(pack: MonsterPack, imgId: number) {
                 <button class="btn-sm btn-danger" @click="remove(p)">삭제</button>
               </td>
             </tr>
-            <tr v-if="!packs.length"><td colspan="7" class="empty">몬스터 팩이 없습니다.</td></tr>
+            <tr v-if="!packs.length"><td colspan="9" class="empty">몬스터 팩이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -134,7 +145,7 @@ async function removeImage(pack: MonsterPack, imgId: number) {
 
   <div v-if="showModal" class="overlay" @click.self="showModal = false">
     <div class="modal">
-      <h3>{{ isEdit ? '몬스터 팩 편집' : '몬스터 팩 추가' }}</h3>
+      <h3>{{ isEdit ? '몬스터 팩 편집' : '몬스터 팩 추가' }} <span v-if="isEdit" class="id-cell">#{{ form.id }}</span></h3>
       <label>이름 *</label>
       <input v-model="form.name" type="text" placeholder="몬스터 팩 이름" />
       <label>설명</label>
@@ -193,6 +204,9 @@ th { background: #f7f8fa; font-weight: 600; color: #555; border-bottom: 1px soli
 td { border-bottom: 1px solid #f0f0f0; }
 tr:last-child td { border-bottom: none; }
 tr.selected td { background: #f5f7ff; }
+.thumb-sm { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; display: block; }
+.thumb-sm.placeholder { display: flex; align-items: center; justify-content: center; background: #f7f8fa; color: #ccc; font-size: 0.75rem; }
+.id-cell { color: #aaa; font-size: 0.8rem; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }

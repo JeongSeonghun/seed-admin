@@ -11,6 +11,7 @@ interface Character {
   deadUrl: string
   coinPrice: number | null
   contentCategory: 'GENERAL' | 'ADULT'
+  rarity: 'COMMON' | 'RARE'
   isDefault: boolean
   isActive: boolean
 }
@@ -21,6 +22,9 @@ const showModal = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
 const uploadingField = ref<string | null>(null)
+// 목록 대표 이미지(normalUrl)가 깨진 URL이면 <img>가 계속 깨진 아이콘으로 남으니, 로드 실패한
+// 캐릭터 id를 기록해두고 플레이스홀더로 대체한다.
+const brokenThumbIds = ref(new Set<number>())
 
 const form = ref({
   id: 0,
@@ -31,6 +35,7 @@ const form = ref({
   deadUrl: '',
   coinPrice: null as number | null,
   contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT',
+  rarity: 'COMMON' as 'COMMON' | 'RARE',
   isDefault: false,
   isActive: true,
 })
@@ -44,13 +49,13 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', normalUrl: '', hitUrl: '', criticalUrl: '', deadUrl: '', coinPrice: null, contentCategory: 'GENERAL', isDefault: false, isActive: true }
+  form.value = { id: 0, name: '', normalUrl: '', hitUrl: '', criticalUrl: '', deadUrl: '', coinPrice: null, contentCategory: 'GENERAL', rarity: 'COMMON', isDefault: false, isActive: true }
   showModal.value = true
 }
 
 function openEdit(c: Character) {
   isEdit.value = true
-  form.value = { id: c.id, name: c.name, normalUrl: c.normalUrl, hitUrl: c.hitUrl, criticalUrl: c.criticalUrl, deadUrl: c.deadUrl, coinPrice: c.coinPrice, contentCategory: c.contentCategory, isDefault: c.isDefault, isActive: c.isActive }
+  form.value = { id: c.id, name: c.name, normalUrl: c.normalUrl, hitUrl: c.hitUrl, criticalUrl: c.criticalUrl, deadUrl: c.deadUrl, coinPrice: c.coinPrice, contentCategory: c.contentCategory, rarity: c.rarity, isDefault: c.isDefault, isActive: c.isActive }
   showModal.value = true
 }
 
@@ -71,7 +76,7 @@ async function save() {
   saving.value = true
   try {
     const coinPrice = form.value.coinPrice === null || (form.value.coinPrice as unknown) === '' ? null : form.value.coinPrice
-    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
+    const body = { name: form.value.name, normalUrl: form.value.normalUrl, hitUrl: form.value.hitUrl, criticalUrl: form.value.criticalUrl, deadUrl: form.value.deadUrl, coinPrice, contentCategory: form.value.contentCategory, rarity: form.value.rarity, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGameCharacter(form.value.id, body)
     else await api.createGameCharacter(body)
     showModal.value = false
@@ -96,19 +101,22 @@ async function remove(c: Character) {
     <div v-if="loading" class="loading">불러오는 중...</div>
     <div v-else class="grid">
       <div v-for="c in characters" :key="c.id" class="card">
+        <div class="thumb-wrap">
+          <img
+            v-if="c.normalUrl && !brokenThumbIds.has(c.id)"
+            :src="c.normalUrl" alt="" class="thumb"
+            @error="brokenThumbIds.add(c.id)"
+          />
+          <div v-else class="thumb placeholder">이미지 없음</div>
+        </div>
         <div class="card-header">
-          <span class="card-name">{{ c.name }}</span>
+          <span class="card-name">{{ c.name }} <span class="id-tag">#{{ c.id }}</span></span>
           <div class="badges">
             <span v-if="c.isDefault" class="badge badge-purple">기본</span>
+            <span v-if="c.rarity === 'RARE'" class="badge badge-rare">RARE</span>
             <span v-if="c.coinPrice !== null" class="badge badge-yellow">{{ c.coinPrice }}코인</span>
             <span class="badge" :class="c.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ c.contentCategory === 'ADULT' ? '성인' : '일반' }}</span>
             <span class="badge" :class="c.isActive ? 'badge-green' : 'badge-gray'">{{ c.isActive ? '활성' : '비활성' }}</span>
-          </div>
-        </div>
-        <div class="img-row">
-          <div class="img-item" v-for="(label, key) in { normalUrl: '기본', hitUrl: '피격', criticalUrl: '치명', deadUrl: '사망' }" :key="key">
-            <img :src="c[key as keyof Character] as string" alt="" />
-            <span class="img-label">{{ label }}</span>
           </div>
         </div>
         <div class="card-actions">
@@ -121,7 +129,7 @@ async function remove(c: Character) {
 
     <div v-if="showModal" class="overlay" @click.self="showModal = false">
       <div class="modal">
-        <h3>{{ isEdit ? '캐릭터 편집' : '캐릭터 추가' }}</h3>
+        <h3>{{ isEdit ? '캐릭터 편집' : '캐릭터 추가' }} <span v-if="isEdit" class="id-tag">#{{ form.id }}</span></h3>
         <label>이름 *</label>
         <input v-model="form.name" type="text" placeholder="캐릭터 이름" />
 
@@ -144,6 +152,11 @@ async function remove(c: Character) {
           <option value="GENERAL">일반</option>
           <option value="ADULT">성인</option>
         </select>
+        <label>등급 <span class="hint">RARE는 스테이지 보상에서 확률+천장 판정을 거침</span></label>
+        <select v-model="form.rarity">
+          <option value="COMMON">COMMON (확정 지급)</option>
+          <option value="RARE">RARE (확률 지급)</option>
+        </select>
         <div class="check-row">
           <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 캐릭터</label>
           <label class="check-label"><input type="checkbox" v-model="form.isActive" /> 활성</label>
@@ -161,15 +174,15 @@ async function remove(c: Character) {
 .toolbar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
 .loading { color: #888; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
-.card { background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.thumb-wrap { width: 100%; aspect-ratio: 1; background: #f7f8fa; }
+.thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb.placeholder { display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 0.8rem; }
+.card-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem 0; margin-bottom: 0.75rem; }
 .card-name { font-weight: 600; font-size: 0.95rem; }
+.id-tag { font-weight: 400; font-size: 0.75rem; color: #aaa; }
 .badges { display: flex; gap: 0.3rem; }
-.img-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
-.img-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-.img-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid #eee; background: #f7f8fa; }
-.img-label { font-size: 0.7rem; color: #888; }
-.card-actions { display: flex; gap: 0.4rem; }
+.card-actions { display: flex; gap: 0.4rem; padding: 0 1rem 1rem; }
 .empty { text-align: center; color: #aaa; padding: 3rem; background: white; border-radius: 10px; grid-column: 1/-1; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-purple { background: #faf0ff; color: #805ad5; }
@@ -177,6 +190,7 @@ async function remove(c: Character) {
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
 .badge-adult { background: #fff0f0; color: #c53030; }
+.badge-rare { background: #eef2ff; color: #4338ca; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }

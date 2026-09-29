@@ -8,6 +8,9 @@ const auth = useAuthStore()
 interface LevelConfig { level: number; count: number }
 interface StageTitle { ko: string; en?: string }
 interface Episode { id: number; title: { ko: string; en?: string }; sortOrder: number }
+interface Character { id: number; name: string; rarity: 'COMMON' | 'RARE' }
+interface Background { id: number; name: string; rarity: 'COMMON' | 'RARE' }
+interface MonsterPack { id: number; name: string; type: 'NORMAL' | 'BOSS' }
 interface Stage {
   id: number
   level: number
@@ -31,6 +34,9 @@ interface Stage {
 
 const stages = ref<Stage[]>([])
 const episodes = ref<Episode[]>([])
+const characters = ref<Character[]>([])
+const backgrounds = ref<Background[]>([])
+const monsterPacks = ref<MonsterPack[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const isEdit = ref(false)
@@ -86,9 +92,14 @@ const sortedStages = computed(() => {
 async function load() {
   loading.value = true
   try {
-    const [stagesRes, episodesRes] = await Promise.all([api.getGameStages(), api.getGameEpisodes()])
+    const [stagesRes, episodesRes, charactersRes, backgroundsRes, monsterPacksRes] = await Promise.all([
+      api.getGameStages(), api.getGameEpisodes(), api.getGameCharacters(), api.getGameBackgrounds(), api.getGameMonsterPacks(),
+    ])
     stages.value = stagesRes.data
     episodes.value = episodesRes.data
+    characters.value = charactersRes.data
+    backgrounds.value = backgroundsRes.data
+    monsterPacks.value = monsterPacksRes.data
   } finally { loading.value = false }
 }
 onMounted(load)
@@ -290,33 +301,46 @@ function cfgSummary(s: Stage) {
         </div>
         <div v-if="form.stageType === 'NORMAL'" class="form-row">
           <div class="form-col">
-            <label>몬스터 팩 ID <span class="label-sub">(쉼표 구분, 미설정 시 보유 몬스터 팩 랜덤)</span></label>
+            <label>몬스터 팩 <span class="label-sub">(쉼표 구분 ID, 미설정 시 보유 몬스터 팩 랜덤)</span></label>
             <input v-model="form.normalPackageIdsText" type="text" placeholder="예: 1, 2, 3" />
+            <p class="id-ref">사용 가능: <span v-for="p in monsterPacks" :key="p.id">#{{ p.id }} {{ p.name }}({{ p.type }})&nbsp;</span></p>
           </div>
         </div>
         <div v-if="form.stageType === 'BOSS'" class="form-row">
           <div class="form-col">
-            <label>보스 몬스터 팩 ID <span class="label-sub">(미설정 시 보유 BOSS 몬스터 팩 랜덤)</span></label>
-            <input v-model.number="form.bossPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
+            <label>보스 몬스터 팩 <span class="label-sub">(미설정 시 보유 BOSS 몬스터 팩 랜덤)</span></label>
+            <select v-model="form.bossPackageId">
+              <option :value="null">없음</option>
+              <option v-for="p in monsterPacks.filter(p => p.type === 'BOSS')" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
           </div>
         </div>
 
         <label class="section-label">클리어 보상</label>
         <div class="form-row">
           <div class="form-col">
-            <label>보상 몬스터 팩 ID</label>
-            <input v-model.number="form.rewardPackageId" type="number" min="1" placeholder="없으면 비워두세요" />
+            <label>보상 몬스터 팩</label>
+            <select v-model="form.rewardPackageId">
+              <option :value="null">없음</option>
+              <option v-for="p in monsterPacks" :key="p.id" :value="p.id">{{ p.name }}({{ p.type }})</option>
+            </select>
           </div>
           <div class="form-col">
-            <label>보상 캐릭터 ID <span class="label-sub">(BOSS)</span></label>
-            <input v-model.number="form.rewardCharacterId" type="number" min="1" placeholder="없으면 비워두세요" />
+            <label>보상 캐릭터 <span class="label-sub">(BOSS)</span></label>
+            <select v-model="form.rewardCharacterId">
+              <option :value="null">없음</option>
+              <option v-for="c in characters" :key="c.id" :value="c.id">{{ c.name }}{{ c.rarity === 'RARE' ? ' (RARE)' : '' }}</option>
+            </select>
           </div>
           <div class="form-col">
-            <label>보상 배경 ID <span class="label-sub">(BOSS)</span></label>
-            <input v-model.number="form.rewardBackgroundId" type="number" min="1" placeholder="없으면 비워두세요" />
+            <label>보상 배경 <span class="label-sub">(BOSS)</span></label>
+            <select v-model="form.rewardBackgroundId">
+              <option :value="null">없음</option>
+              <option v-for="bg in backgrounds" :key="bg.id" :value="bg.id">{{ bg.name }}{{ bg.rarity === 'RARE' ? ' (RARE)' : '' }}</option>
+            </select>
           </div>
           <div class="form-col">
-            <label>획득 확률 <span class="label-sub">(0~1, 캐릭터·배경 공용)</span></label>
+            <label>획득 확률 <span class="label-sub">(0~1, RARE 캐릭터·배경 공용)</span></label>
             <input v-model.number="form.characterDropRate" type="number" min="0" max="1" step="0.05" />
           </div>
         </div>
@@ -346,6 +370,7 @@ tr:last-child td { border-bottom: none; }
 .title-en { display: block; font-size: 0.75rem; color: #888; }
 .empty-title { color: #ccc; }
 .label-sub { font-weight: 400; color: #aaa; }
+.id-ref { font-size: 0.75rem; color: #aaa; margin-top: 0.3rem; line-height: 1.6; }
 .empty { text-align: center; color: #aaa; padding: 2rem; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
 .badge-blue { background: #ebf4ff; color: #2b6cb0; }

@@ -8,6 +8,7 @@ interface Background {
   imageUrl: string
   coinPrice: number | null
   contentCategory: 'GENERAL' | 'ADULT'
+  rarity: 'COMMON' | 'RARE'
   isDefault: boolean
   isActive: boolean
 }
@@ -25,6 +26,7 @@ const form = ref({
   imageUrl: '',
   coinPrice: null as number | null,
   contentCategory: 'GENERAL' as 'GENERAL' | 'ADULT',
+  rarity: 'COMMON' as 'COMMON' | 'RARE',
   isDefault: false,
   isActive: true,
 })
@@ -38,13 +40,13 @@ onMounted(load)
 
 function openCreate() {
   isEdit.value = false
-  form.value = { id: 0, name: '', imageUrl: '', coinPrice: null, contentCategory: 'GENERAL', isDefault: false, isActive: true }
+  form.value = { id: 0, name: '', imageUrl: '', coinPrice: null, contentCategory: 'GENERAL', rarity: 'COMMON', isDefault: false, isActive: true }
   showModal.value = true
 }
 
 function openEdit(bg: Background) {
   isEdit.value = true
-  form.value = { id: bg.id, name: bg.name, imageUrl: bg.imageUrl, coinPrice: bg.coinPrice, contentCategory: bg.contentCategory, isDefault: bg.isDefault, isActive: bg.isActive }
+  form.value = { id: bg.id, name: bg.name, imageUrl: bg.imageUrl, coinPrice: bg.coinPrice, contentCategory: bg.contentCategory, rarity: bg.rarity, isDefault: bg.isDefault, isActive: bg.isActive }
   showModal.value = true
 }
 
@@ -65,7 +67,7 @@ async function save() {
   saving.value = true
   try {
     const coinPrice = form.value.coinPrice === null || (form.value.coinPrice as unknown) === '' ? null : form.value.coinPrice
-    const body = { name: form.value.name, imageUrl: form.value.imageUrl, coinPrice, contentCategory: form.value.contentCategory, isDefault: form.value.isDefault, isActive: form.value.isActive }
+    const body = { name: form.value.name, imageUrl: form.value.imageUrl, coinPrice, contentCategory: form.value.contentCategory, rarity: form.value.rarity, isDefault: form.value.isDefault, isActive: form.value.isActive }
     if (isEdit.value) await api.updateGameBackground(form.value.id, body)
     else await api.createGameBackground(body)
     showModal.value = false
@@ -94,9 +96,10 @@ async function remove(bg: Background) {
         <img :src="bg.imageUrl" alt="" class="thumb" />
         <div class="card-body">
           <div class="card-header">
-            <span class="card-name">{{ bg.name }}</span>
+            <span class="card-name">{{ bg.name }} <span class="id-tag">#{{ bg.id }}</span></span>
             <div class="badges">
               <span v-if="bg.isDefault" class="badge badge-purple">기본</span>
+              <span v-if="bg.rarity === 'RARE'" class="badge badge-rare">RARE</span>
               <span v-if="bg.coinPrice !== null" class="badge badge-yellow">{{ bg.coinPrice }}코인</span>
               <span class="badge" :class="bg.contentCategory === 'ADULT' ? 'badge-adult' : 'badge-gray'">{{ bg.contentCategory === 'ADULT' ? '성인' : '일반' }}</span>
               <span class="badge" :class="bg.isActive ? 'badge-green' : 'badge-gray'">{{ bg.isActive ? '활성' : '비활성' }}</span>
@@ -113,7 +116,7 @@ async function remove(bg: Background) {
 
     <div v-if="showModal" class="overlay" @click.self="showModal = false">
       <div class="modal">
-        <h3>{{ isEdit ? '배경 편집' : '배경 추가' }}</h3>
+        <h3>{{ isEdit ? '배경 편집' : '배경 추가' }} <span v-if="isEdit" class="id-tag">#{{ form.id }}</span></h3>
         <label>이름 *</label>
         <input v-model="form.name" type="text" placeholder="배경 이름" />
 
@@ -133,6 +136,11 @@ async function remove(bg: Background) {
         <select v-model="form.contentCategory">
           <option value="GENERAL">일반</option>
           <option value="ADULT">성인</option>
+        </select>
+        <label>등급 <span class="hint">RARE는 스테이지 보상에서 확률+천장 판정을 거침</span></label>
+        <select v-model="form.rarity">
+          <option value="COMMON">COMMON (확정 지급)</option>
+          <option value="RARE">RARE (확률 지급)</option>
         </select>
         <div class="check-row">
           <label class="check-label"><input type="checkbox" v-model="form.isDefault" /> 기본 배경</label>
@@ -158,6 +166,7 @@ async function remove(bg: Background) {
 .card-header { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
 .card-name { font-weight: 600; font-size: 0.95rem; }
 .badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.id-tag { font-weight: 400; font-size: 0.75rem; color: #aaa; }
 .card-actions { display: flex; gap: 0.4rem; }
 .empty { text-align: center; color: #aaa; padding: 3rem; background: white; border-radius: 10px; grid-column: 1/-1; }
 .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
@@ -166,6 +175,7 @@ async function remove(bg: Background) {
 .badge-green { background: #f0fff4; color: #276749; }
 .badge-gray { background: #f0f0f0; color: #888; }
 .badge-adult { background: #fff0f0; color: #c53030; }
+.badge-rare { background: #eef2ff; color: #4338ca; }
 .btn-primary { padding: 0.45rem 1rem; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
 .btn-primary:hover { background: #3a5ce5; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
